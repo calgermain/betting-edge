@@ -100,78 +100,481 @@ table{width:100%;border-collapse:collapse}.table-wrap{overflow:auto}.table th{fo
 <div class="card" id="final"></div></div>
 </main></div>
 <script>
-const baseBets=[
-{id:1,name:"Jaylen Warren O65.5 rushing yards",type:"Player Prop",odds:-115,est:.60,conf:"Medium",risk:"Medium",corr:"positive",reason:"Projected rushing volume benefits from a competitive script; matchup and expected workload support the over.",stats:"Usage/volume + matchup",riskText:"Early deficit or reduced workload could shift attempts toward passing.",invalid:"Unexpected snap-count limitation or major offensive-line change."},
-{id:2,name:"Roman Wilson O22.5 receiving yards",type:"Player Prop",odds:-105,est:.59,conf:"Medium",risk:"Medium",corr:"positive",reason:"Target opportunity creates a modest edge at a relatively low yardage threshold.",stats:"Target share + route expectation",riskText:"Uncertain rotation creates wider variance than the raw projection suggests.",invalid:"Inactive/limited participation or unexpected personnel usage."},
-{id:3,name:"Pat Freiermuth O28.5 receiving yards",type:"Player Prop",odds:-110,est:.60,conf:"Medium",risk:"Medium",corr:"positive",reason:"Tight-end route volume and short-area usage support a stable floor.",stats:"Routes + short-area targets",riskText:"Red-zone role does not guarantee yardage; game script can suppress volume.",invalid:"Role change or snap restriction."},
-{id:4,name:"Browns +2.5",type:"Spread",odds:-110,est:.56,conf:"Medium",risk:"Low",corr:"neutral",reason:"Market moved toward Cleveland while the model sees a close-game distribution.",stats:"Line movement + matchup",riskText:"Turnovers and late-game variance dominate a narrow spread.",invalid:"Major QB/OL availability change."},
-{id:5,name:"Game Under 39.5",type:"Total",odds:-110,est:.54,conf:"Low",risk:"Medium",corr:"negative",reason:"Current price is close to model fair value with modest defensive/situational support.",stats:"Pace + scoring environment",riskText:"Explosive plays can break a low total quickly.",invalid:"Weather shift or unexpected tempo/lineup news."},
-{id:6,name:"Steelers ML",type:"Moneyline",odds:-135,est:.55,conf:"Low",risk:"Medium",corr:"neutral",reason:"Model makes Pittsburgh a modest favorite but price leaves limited room for error.",stats:"Win probability + price",riskText:"Negative expected value can appear even when a team is more likely to win.",invalid:"Key player inactive."},
-{id:7,name:"George Pickens O4.5 receptions",type:"Player Prop",odds:-125,est:.61,conf:"Medium",risk:"Medium",corr:"positive",reason:"Catch-volume angle pairs naturally with expected passing opportunity.",stats:"Routes + target volume",riskText:"Efficiency and game script can reduce reception count.",invalid:"Route participation changes."}
+const API_BASE = "https://betting-edge-api.onrender.com";
+
+const SPORT_MAP = {
+  "NFL": "americanfootball_nfl",
+  "NBA": "basketball_nba",
+  "MLB": "baseball_mlb",
+  "NHL": "icehockey_nhl",
+  "NCAA Football": "americanfootball_ncaaf",
+  "NCAA Basketball": "basketball_ncaab"
+};
+
+let events = [];
+let selectedEventId = null;
+let bets = [];
+let active = "All";
+
+const baseBets = [
+  {id:1,name:"Jaylen Warren O65.5 rushing yards",type:"Player Prop",odds:-115,est:.60,conf:"Medium",risk:"Medium",corr:"positive",reason:"Projected rushing volume benefits from a competitive script; matchup and expected workload support the over.",stats:"Usage/volume + matchup",riskText:"Early deficit or reduced workload could shift attempts toward passing.",invalid:"Unexpected snap-count limitation or major offensive-line change."},
+  {id:2,name:"Roman Wilson O22.5 receiving yards",type:"Player Prop",odds:-105,est:.59,conf:"Medium",risk:"Medium",corr:"positive",reason:"Target opportunity creates a modest edge at a relatively low yardage threshold.",stats:"Target share + route expectation",riskText:"Uncertain rotation creates wider variance than the raw projection suggests.",invalid:"Inactive/limited participation or unexpected personnel usage."},
+  {id:3,name:"Pat Freiermuth O28.5 receiving yards",type:"Player Prop",odds:-110,est:.60,conf:"Medium",risk:"Medium",corr:"positive",reason:"Tight-end route volume and short-area usage support a stable floor.",stats:"Routes + short-area targets",riskText:"Red-zone role does not guarantee yardage; game script can suppress volume.",invalid:"Role change or snap restriction."},
+  {id:4,name:"Browns +2.5",type:"Spread",odds:-110,est:.56,conf:"Medium",risk:"Low",corr:"neutral",reason:"Market moved toward Cleveland while the model sees a close-game distribution.",stats:"Line movement + matchup",riskText:"Turnovers and late-game variance dominate a narrow spread.",invalid:"Major QB/OL availability change."},
+  {id:5,name:"Game Under 39.5",type:"Total",odds:-110,est:.54,conf:"Low",risk:"Medium",corr:"negative",reason:"Current price is close to model fair value with modest defensive/situational support.",stats:"Pace + scoring environment",riskText:"Explosive plays can break a low total quickly.",invalid:"Weather shift or unexpected tempo/lineup news."},
+  {id:6,name:"Steelers ML",type:"Moneyline",odds:-135,est:.55,conf:"Low",risk:"Medium",corr:"neutral",reason:"Model makes Pittsburgh a modest favorite but price leaves limited room for error.",stats:"Win probability + price",riskText:"Negative expected value can appear even when a team is more likely to win.",invalid:"Key player inactive."},
+  {id:7,name:"George Pickens O4.5 receptions",type:"Player Prop",odds:-125,est:.61,conf:"Medium",risk:"Medium",corr:"positive",reason:"Catch-volume angle pairs naturally with expected passing opportunity.",stats:"Routes + target volume",riskText:"Efficiency and game script can reduce reception count.",invalid:"Route participation changes."}
 ];
-let bets=[...baseBets], active="All";
-function implied(o){return o<0?(-o)/(-o+100):100/(o+100)}
-function american(p){return p>=.5?Math.round(-100*p/(1-p)):Math.round(100*(1-p)/p)}
-function fmtOdds(o){return o>0?"+"+o:o}
-function edge(b){return b.est-implied(b.odds)}
-function runAnalysis(){
- const book=document.getElementById("book").value;
- bets=baseBets.map(b=>({...b,book}));
- document.getElementById("candidateCount").textContent=bets.length;
- document.getElementById("bestEdge").textContent="+"+(Math.max(...bets.map(edge))*100).toFixed(1)+"%";
- renderFilters();renderBets();renderParlays();renderFinal();
+
+function implied(o) {
+  return o < 0 ? (-o) / (-o + 100) : 100 / (o + 100);
 }
-function renderFilters(){
- document.getElementById("filters").innerHTML=["All","Player Prop","Spread","Total","Moneyline"].map(x=>`<button class="${active===x?'active':''}" onclick="setFilter('${x}')">${x}</button>`).join("");
+
+function american(p) {
+  return p >= .5
+    ? Math.round(-100 * p / (1 - p))
+    : Math.round(100 * (1 - p) / p);
 }
-function setFilter(x){active=x;renderFilters();renderBets()}
-function renderBets(){
- const arr=active==="All"?bets:bets.filter(b=>b.type===active);
- document.getElementById("betBody").innerHTML=arr.map(b=>`
- <tr onclick="toggle(${b.id})">
- <td>＋</td><td><div class="betname">${b.name}</div><div class="sub">${b.type}</div></td><td>${b.book}</td>
- <td>${fmtOdds(b.odds)}</td><td>${(implied(b.odds)*100).toFixed(1)}%</td><td>${(b.est*100).toFixed(1)}%</td>
- <td class="${edge(b)>0?'green':'red'}"><b>${edge(b)>=0?'+':''}${(edge(b)*100).toFixed(1)}%</b></td>
- <td><span class="pill ${b.conf==="Medium"?'y':'r'}">${b.conf}</span></td><td>${b.risk}</td></tr>
- <tr class="expand" id="exp${b.id}"><td colspan="9"><div class="reason-grid">
- <div class="reason"><h4>Why considered</h4>${b.reason}<div class="sub" style="margin-top:6px">${b.stats}</div></div>
- <div class="reason"><h4>Risks</h4>${b.riskText}</div>
- <div class="reason"><h4>Invalidating information</h4>${b.invalid}</div>
- </div></td></tr>`).join("");
+
+function fmtOdds(o) {
+  return o > 0 ? "+" + o : o;
 }
-function toggle(id){const e=document.getElementById("exp"+id);e.style.display=e.style.display==="table-row"?"none":"table-row"}
-function parlay(name,ids,adjust){
- const legs=ids.map(id=>bets.find(b=>b.id===id));let p=legs.reduce((x,b)=>x*b.est,1)*adjust;
- const odds=american(p);const impliedP=legs.reduce((x,b)=>x*implied(b.odds),1);
- const corr=adjust>1?"MODERATE POSITIVE":adjust<1?"MIXED / NEGATIVE":"MOSTLY INDEPENDENT";
- return {name,legs,p,odds,impliedP,corr};
+
+function edge(b) {
+  return b.est - implied(b.odds);
 }
-function renderParlays(){
- const pool=bets.filter(b=>edge(b)>0).sort((a,b)=>edge(b)-edge(a));
- const sets=[
-  parlay("Conservative",pool.slice(0,3).map(x=>x.id),1.10),
-  parlay("Balanced",pool.slice(0,4).map(x=>x.id),1.07),
-  parlay("Aggressive",pool.slice(0,6).map(x=>x.id),.96),
-  parlay("Best Value",pool.slice(0,3).map(x=>x.id),1.06)
- ];
- document.getElementById("parlays").innerHTML=sets.map(p=>`<div class="card parlay"><div class="eyebrow">${p.name}</div><h3>${p.legs.length} LEG · ${fmtOdds(p.odds)}</h3>
- <div class="legs">${p.legs.map((l,i)=>`<div class="leg"><span class="num">${i+1}</span><span>${l.name}<div class="sub">${fmtOdds(l.odds)} · est ${(l.est*100).toFixed(0)}%</div></span></div>`).join("")}</div>
- <div class="big">${(p.p*100).toFixed(1)}% <span class="sub">estimated probability</span></div>
- <div class="parlay-footer"><div class="mini"><small>COMBINED IMPLIED</small><b>${(p.impliedP*100).toFixed(1)}%</b></div><div class="mini"><small>FAIR ODDS</small><b>${fmtOdds(p.odds)}</b></div><div class="mini"><small>CORRELATION</small><b>${p.corr}</b></div><div class="mini"><small>VALUE</small><b class="green">${((p.p-p.impliedP)*100).toFixed(1)} pts</b></div></div></div>`).join("");
+
+function getSportCode() {
+  return SPORT_MAP[document.getElementById("sport").value] || "americanfootball_nfl";
 }
-function syncAlloc(){
- const r=+document.getElementById("risk").value;
- ["a1","a2","a3"].forEach((id,i)=>document.getElementById(id+"v").textContent="$"+(+document.getElementById(id).value));
+
+function formatEventName(event) {
+  return `${event.away_team} @ ${event.home_team}`;
 }
-function equalize(){["a1","a2","a3"].forEach(id=>document.getElementById(id).value=10);syncAlloc()}
-function renderFinal(){
- const strong=bets.filter(b=>edge(b)>0.05).sort((a,b)=>edge(b)-edge(a)).slice(0,4);
- document.getElementById("final").innerHTML=`<div class="grid2"><div><div class="eyebrow">Strongest individual opportunities</div><ul>${strong.map(b=>`<li><b>${b.name}</b> — +${(edge(b)*100).toFixed(1)} pts edge, ${b.conf.toLowerCase()} confidence</li>`).join("")}</ul></div><div><div class="eyebrow">Methodology status</div><p class="muted">Verified information: none — this prototype is using mock market data.</p><p class="muted">Model inference: probability estimates shown in the candidate table.</p><p class="muted">Assumptions: correlation adjustments are illustrative and must be replaced by a calibrated model.</p></div></div>
- <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border)"><b class="yellow">Important:</b> Re-check injuries, starters, weather and line movement immediately before betting. Probabilities are estimates, not guarantees.</div>`;
+
+function formatEventDate(event) {
+  if (!event.commence_time) return "";
+  return new Date(event.commence_time).toLocaleString([], {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit"
+  });
 }
-document.getElementById("risk").addEventListener("input",()=>{document.getElementById("riskDisplay").textContent="$"+document.getElementById("risk").value});
-document.getElementById("bankroll").addEventListener("input",()=>{document.getElementById("bankDisplay").textContent="$"+document.getElementById("bankroll").value});
-renderFilters();runAnalysis();syncAlloc();
+
+async function loadEvents() {
+  const sport = getSportCode();
+  const dateInput = document.getElementById("date");
+  const gameSelect = document.getElementById("game");
+
+  gameSelect.innerHTML = `<option>Loading games...</option>`;
+  gameSelect.disabled = true;
+
+  try {
+    const response = await fetch(
+      `${API_BASE}/api/v1/events?sport=${encodeURIComponent(sport)}`
+    );
+
+    if (!response.ok) {
+      throw new Error(`Backend returned ${response.status}`);
+    }
+
+    const payload = await response.json();
+    events = payload.data || [];
+
+    /*
+      The backend currently returns the upcoming events available
+      from The Odds API. We use the selected date to filter them.
+    */
+    const selectedDate = dateInput.value;
+
+    let matching = events.filter(event => {
+      if (!event.commence_time) return false;
+      return event.commence_time.slice(0, 10) === selectedDate;
+    });
+
+    /*
+      If the selected date has no games, keep the dropdown usable
+      by showing all currently available upcoming games.
+    */
+    if (!matching.length) {
+      matching = events;
+    }
+
+    gameSelect.innerHTML = "";
+
+    if (!matching.length) {
+      gameSelect.innerHTML = `<option>No games available</option>`;
+      updateGameDisplay(null);
+      return;
+    }
+
+    matching.forEach(event => {
+      const option = document.createElement("option");
+      option.value = event.id;
+      option.textContent = `${formatEventName(event)} — ${formatEventDate(event)}`;
+      gameSelect.appendChild(option);
+    });
+
+    selectedEventId = matching[0].id;
+    gameSelect.value = selectedEventId;
+
+    updateGameDisplay(matching[0]);
+
+  } catch (error) {
+    console.error("Failed to load events:", error);
+
+    gameSelect.innerHTML = `<option>Unable to load games</option>`;
+    updateGameDisplay(null);
+  } finally {
+    gameSelect.disabled = false;
+  }
+}
+
+function updateGameDisplay(event) {
+  const gameMetric = document.querySelector(".summary .metric:first-child");
+
+  if (!event) {
+    gameMetric.querySelector(".v").textContent = "NO GAME";
+    gameMetric.querySelector(".s").textContent = "No event available";
+    return;
+  }
+
+  gameMetric.querySelector(".v").textContent =
+    `${event.away_team} @ ${event.home_team}`;
+
+  gameMetric.querySelector(".s").textContent =
+    formatEventDate(event);
+
+  /*
+    This is intentionally visible in the interface so we know
+    which real event is currently selected.
+  */
+  const marketHeading = document.querySelector(".section .section-head .pill");
+  if (marketHeading) {
+    marketHeading.textContent = "LIVE API";
+    marketHeading.className = "pill g";
+  }
+}
+
+function syncSelectedEvent() {
+  const gameSelect = document.getElementById("game");
+  selectedEventId = gameSelect.value;
+
+  const event = events.find(e => e.id === selectedEventId);
+
+  if (event) {
+    updateGameDisplay(event);
+  }
+}
+
+async function runAnalysis() {
+  await loadEvents();
+
+  /*
+    Candidate calculations are still mock at this stage.
+    We will replace these with real market-derived candidates
+    after the event selector is working.
+  */
+  const book = document.getElementById("book").value;
+
+  bets = baseBets.map(b => ({
+    ...b,
+    book
+  }));
+
+  document.getElementById("candidateCount").textContent = bets.length;
+
+  document.getElementById("bestEdge").textContent =
+    "+" + (Math.max(...bets.map(edge)) * 100).toFixed(1) + "%";
+
+  renderFilters();
+  renderBets();
+  renderParlays();
+  renderFinal();
+}
+
+function renderFilters() {
+  document.getElementById("filters").innerHTML =
+    ["All", "Player Prop", "Spread", "Total", "Moneyline"]
+      .map(x =>
+        `<button class="${active === x ? "active" : ""}"
+          onclick="setFilter('${x}')">${x}</button>`
+      )
+      .join("");
+}
+
+function setFilter(x) {
+  active = x;
+  renderFilters();
+  renderBets();
+}
+
+function renderBets() {
+  const arr = active === "All"
+    ? bets
+    : bets.filter(b => b.type === active);
+
+  document.getElementById("betBody").innerHTML = arr.map(b => `
+    <tr onclick="toggle(${b.id})">
+      <td>＋</td>
+      <td>
+        <div class="betname">${b.name}</div>
+        <div class="sub">${b.type}</div>
+      </td>
+      <td>${b.book}</td>
+      <td>${fmtOdds(b.odds)}</td>
+      <td>${(implied(b.odds) * 100).toFixed(1)}%</td>
+      <td>${(b.est * 100).toFixed(1)}%</td>
+      <td class="${edge(b) > 0 ? "green" : "red"}">
+        <b>${edge(b) >= 0 ? "+" : ""}${(edge(b) * 100).toFixed(1)}%</b>
+      </td>
+      <td>
+        <span class="pill ${b.conf === "Medium" ? "y" : "r"}">
+          ${b.conf}
+        </span>
+      </td>
+      <td>${b.risk}</td>
+    </tr>
+
+    <tr class="expand" id="exp${b.id}">
+      <td colspan="9">
+        <div class="reason-grid">
+          <div class="reason">
+            <h4>Why considered</h4>
+            ${b.reason}
+            <div class="sub" style="margin-top:6px">${b.stats}</div>
+          </div>
+
+          <div class="reason">
+            <h4>Risks</h4>
+            ${b.riskText}
+          </div>
+
+          <div class="reason">
+            <h4>Invalidating information</h4>
+            ${b.invalid}
+          </div>
+        </div>
+      </td>
+    </tr>
+  `).join("");
+}
+
+function toggle(id) {
+  const e = document.getElementById("exp" + id);
+  e.style.display =
+    e.style.display === "table-row"
+      ? "none"
+      : "table-row";
+}
+
+function parlay(name, ids, adjust) {
+  const legs = ids
+    .map(id => bets.find(b => b.id === id))
+    .filter(Boolean);
+
+  if (!legs.length) {
+    return {
+      name,
+      legs: [],
+      p: 0,
+      odds: 0,
+      impliedP: 0,
+      corr: "N/A"
+    };
+  }
+
+  let p =
+    legs.reduce((x, b) => x * b.est, 1) * adjust;
+
+  const odds = american(p);
+
+  const impliedP =
+    legs.reduce((x, b) => x * implied(b.odds), 1);
+
+  const corr =
+    adjust > 1
+      ? "MODERATE POSITIVE"
+      : adjust < 1
+        ? "MIXED / NEGATIVE"
+        : "MOSTLY INDEPENDENT";
+
+  return {
+    name,
+    legs,
+    p,
+    odds,
+    impliedP,
+    corr
+  };
+}
+
+function renderParlays() {
+  const pool = bets
+    .filter(b => edge(b) > 0)
+    .sort((a, b) => edge(b) - edge(a));
+
+  const sets = [
+    parlay("Conservative", pool.slice(0, 3).map(x => x.id), 1.10),
+    parlay("Balanced", pool.slice(0, 4).map(x => x.id), 1.07),
+    parlay("Aggressive", pool.slice(0, 6).map(x => x.id), .96),
+    parlay("Best Value", pool.slice(0, 3).map(x => x.id), 1.06)
+  ];
+
+  document.getElementById("parlays").innerHTML =
+    sets.map(p => `
+      <div class="card parlay">
+        <div class="eyebrow">${p.name}</div>
+        <h3>${p.legs.length} LEG · ${fmtOdds(p.odds)}</h3>
+
+        <div class="legs">
+          ${p.legs.map((l, i) => `
+            <div class="leg">
+              <span class="num">${i + 1}</span>
+              <span>
+                ${l.name}
+                <div class="sub">
+                  ${fmtOdds(l.odds)} · est ${(l.est * 100).toFixed(0)}%
+                </div>
+              </span>
+            </div>
+          `).join("")}
+        </div>
+
+        <div class="big">
+          ${(p.p * 100).toFixed(1)}%
+          <span class="sub">estimated probability</span>
+        </div>
+
+        <div class="parlay-footer">
+          <div class="mini">
+            <small>COMBINED IMPLIED</small>
+            <b>${(p.impliedP * 100).toFixed(1)}%</b>
+          </div>
+
+          <div class="mini">
+            <small>FAIR ODDS</small>
+            <b>${fmtOdds(p.odds)}</b>
+          </div>
+
+          <div class="mini">
+            <small>CORRELATION</small>
+            <b>${p.corr}</b>
+          </div>
+
+          <div class="mini">
+            <small>VALUE</small>
+            <b class="green">
+              ${((p.p - p.impliedP) * 100).toFixed(1)} pts
+            </b>
+          </div>
+        </div>
+      </div>
+    `).join("");
+}
+
+function syncAlloc() {
+  ["a1", "a2", "a3"].forEach(id => {
+    document.getElementById(id + "v").textContent =
+      "$" + (+document.getElementById(id).value);
+  });
+}
+
+function equalize() {
+  ["a1", "a2", "a3"].forEach(id => {
+    document.getElementById(id).value = 10;
+  });
+
+  syncAlloc();
+}
+
+function renderFinal() {
+  const strong = bets
+    .filter(b => edge(b) > 0.05)
+    .sort((a, b) => edge(b) - edge(a))
+    .slice(0, 4);
+
+  document.getElementById("final").innerHTML = `
+    <div class="grid2">
+      <div>
+        <div class="eyebrow">Strongest individual opportunities</div>
+
+        <ul>
+          ${strong.map(b => `
+            <li>
+              <b>${b.name}</b> —
+              +${(edge(b) * 100).toFixed(1)} pts edge,
+              ${b.conf.toLowerCase()} confidence
+            </li>
+          `).join("")}
+        </ul>
+      </div>
+
+      <div>
+        <div class="eyebrow">Methodology status</div>
+
+        <p class="muted">
+          Live event selection is connected to the backend.
+        </p>
+
+        <p class="muted">
+          Candidate probabilities are still mock estimates.
+        </p>
+
+        <p class="muted">
+          Correlation adjustments are illustrative and must be
+          replaced by a calibrated model.
+        </p>
+      </div>
+    </div>
+
+    <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
+      <b class="yellow">Important:</b>
+      Re-check injuries, starters, weather and line movement immediately
+      before betting. Probabilities are estimates, not guarantees.
+    </div>
+  `;
+}
+
+/* -----------------------------
+   LIVE CONTROL EVENTS
+------------------------------ */
+
+document.getElementById("sport").addEventListener("change", async () => {
+  await loadEvents();
+});
+
+document.getElementById("date").addEventListener("change", async () => {
+  await loadEvents();
+});
+
+document.getElementById("game").addEventListener("change", () => {
+  syncSelectedEvent();
+});
+
+document.getElementById("book").addEventListener("change", () => {
+  runAnalysis();
+});
+
+document.getElementById("risk").addEventListener("input", () => {
+  document.getElementById("riskDisplay").textContent =
+    "$" + document.getElementById("risk").value;
+});
+
+document.getElementById("bankroll").addEventListener("input", () => {
+  document.getElementById("bankDisplay").textContent =
+    "$" + document.getElementById("bankroll").value;
+});
+
+/* -----------------------------
+   INITIALIZE
+------------------------------ */
+
+renderFilters();
+syncAlloc();
+runAnalysis();
 </script>
 </body>
 </html>
