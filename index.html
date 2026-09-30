@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Edge Terminal — Sports Betting Research</title>
+<style>
+:root{--bg:#070b10;--panel:#0d131b;--panel2:#111923;--border:#1e2a37;--text:#e7edf4;--muted:#8997a7;--green:#42d392;--yellow:#f0c75e;--red:#ff6b6b;--blue:#67a7ff;--purple:#a98cff}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:14px/1.45 Inter,ui-sans-serif,system-ui,-apple-system,Segoe UI,sans-serif}
+button,input,select,textarea{font:inherit}button{cursor:pointer}
+.top{height:64px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 24px;background:#090e14;position:sticky;top:0;z-index:5}
+.brand{display:flex;gap:12px;align-items:center;font-weight:800;letter-spacing:.04em}.logo{width:32px;height:32px;border:1px solid #35506a;border-radius:8px;display:grid;place-items:center;color:var(--green);background:#0d1822}
+.live{font-size:11px;color:var(--green);border:1px solid #23543f;border-radius:99px;padding:4px 8px}
+.layout{display:grid;grid-template-columns:310px 1fr;min-height:calc(100vh - 64px)}
+aside{border-right:1px solid var(--border);padding:20px;background:#090e14}
+main{padding:22px;max-width:1700px;width:100%;margin:auto}
+h1,h2,h3,p{margin-top:0}.eyebrow{text-transform:uppercase;letter-spacing:.13em;color:var(--muted);font-size:10px;font-weight:800}
+label{display:block;color:#aab6c4;font-size:11px;font-weight:700;margin:14px 0 6px}
+input,select,textarea{width:100%;background:#0a1017;color:var(--text);border:1px solid var(--border);border-radius:7px;padding:9px 10px;outline:none}
+input:focus,select:focus,textarea:focus{border-color:#355c7d}textarea{resize:vertical;min-height:70px}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:8px}.checks{display:grid;grid-template-columns:1fr 1fr;gap:7px}.check{display:flex;align-items:center;gap:6px;color:#aeb9c6;font-size:11px}.check input{width:auto}
+.btn{border:1px solid var(--border);background:#101923;color:var(--text);padding:10px 12px;border-radius:7px;font-weight:750}.btn.primary{background:#153a2b;border-color:#246f4e;color:#baf7dc}.btn.full{width:100%;margin-top:14px}
+.summary{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:18px}.metric,.card{background:var(--panel);border:1px solid var(--border);border-radius:9px}.metric{padding:13px}.metric .v{font-size:20px;font-weight:800;margin-top:4px}.metric .s{font-size:10px;color:var(--muted)}
+.section{margin-top:18px}.section-head{display:flex;justify-content:space-between;align-items:end;margin-bottom:10px}.section-head h2{font-size:16px;margin:0}
+.grid2{display:grid;grid-template-columns:1.3fr .7fr;gap:12px}.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.card{padding:15px}.market-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:9px}.kv{padding:10px;background:#0a1017;border:1px solid #172330;border-radius:7px}.kv b{display:block;margin-top:3px}.muted{color:var(--muted)}.green{color:var(--green)}.yellow{color:var(--yellow)}.red{color:var(--red)}.blue{color:var(--blue)}
+table{width:100%;border-collapse:collapse}.table-wrap{overflow:auto}.table th{font-size:10px;text-transform:uppercase;color:#748293;text-align:left;padding:9px;border-bottom:1px solid var(--border);white-space:nowrap}.table td{padding:11px 9px;border-bottom:1px solid #16212c;vertical-align:top}.table tr:hover{background:#101923}.betname{font-weight:750}.sub{font-size:10px;color:var(--muted);margin-top:2px}
+.pill{display:inline-flex;align-items:center;border-radius:99px;padding:3px 7px;font-size:10px;font-weight:800;border:1px solid #293746}.pill.g{color:var(--green);border-color:#22563f;background:#0b1c15}.pill.y{color:var(--yellow);border-color:#5b4d26;background:#1b170b}.pill.r{color:var(--red);border-color:#5c2929;background:#1b0e0e}
+.filters{display:flex;gap:7px;flex-wrap:wrap}.filters button{font-size:11px;padding:6px 9px;background:#0c131b;color:#91a0b0;border:1px solid var(--border);border-radius:6px}.filters button.active{color:#dbe7f2;border-color:#3a5268;background:#15212d}
+.expand{display:none;background:#0a1017}.expand td{padding:14px}.reason-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}.reason h4{font-size:10px;text-transform:uppercase;color:#718091;margin:0 0 5px}
+.parlays{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}.parlay{position:relative}.parlay h3{font-size:13px;margin-bottom:3px}.legs{margin:12px 0}.leg{display:flex;gap:8px;padding:7px 0;border-bottom:1px solid #17212c}.num{color:#607184;width:17px}.parlay .big{font-size:22px;font-weight:850}.parlay-footer{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:12px}.mini{background:#0a1017;border:1px solid #172330;border-radius:6px;padding:7px}.mini small{display:block;color:#718091;font-size:9px}.mini b{font-size:12px}
+.alert{display:flex;justify-content:space-between;gap:10px;padding:10px;border:1px solid var(--border);border-radius:7px;margin-bottom:7px;background:#0a1017}.status{font-size:10px;font-weight:850}.allocation{display:grid;grid-template-columns:1fr 1fr;gap:12px}.allocrow{display:grid;grid-template-columns:100px 1fr 80px;gap:8px;align-items:center;margin:8px 0}.allocrow input{padding:7px}
+.footer-note{color:#667585;font-size:10px;margin-top:18px}
+@media(max-width:1100px){.layout{grid-template-columns:1fr}aside{border-right:0;border-bottom:1px solid var(--border)}.summary{grid-template-columns:repeat(3,1fr)}.parlays{grid-template-columns:1fr 1fr}.grid2,.grid3{grid-template-columns:1fr}}
+@media(max-width:650px){main{padding:12px}.summary,.market-grid,.parlays{grid-template-columns:1fr 1fr}.reason-grid{grid-template-columns:1fr}.top{padding:0 12px}}
+</style>
+</head>
+<body>
+<header class="top"><div class="brand"><div class="logo">E</div><div>EDGE TERMINAL <span class="muted">/ SPORTS RESEARCH</span></div></div><div class="live">MOCK MARKET • 13:52 ET</div></header>
+<div class="layout">
+<aside>
+<div class="eyebrow">Research Input</div>
+<h2 style="font-size:18px;margin:5px 0 16px">Build Analysis</h2>
+<label>Sport</label><select id="sport"><option>NFL</option><option>NBA</option><option>MLB</option><option>NHL</option><option>NCAA Football</option><option>NCAA Basketball</option><option>Other</option></select>
+<label>Date</label><input id="date" type="date" value="2026-10-01"/>
+<label>Game / Slate</label><select id="game"><option>Steelers @ Browns</option><option>Entire NFL slate</option><option>Multiple games</option></select>
+<label>Sportsbook</label><select id="book"><option>FanDuel</option><option>DraftKings</option><option>BetMGM</option><option>Caesars</option></select>
+<div class="row"><div><label>Bankroll</label><input id="bankroll" type="number" value="100"/></div><div><label>Risk</label><input id="risk" type="number" value="10"/></div></div>
+<label>Maximum Parlay Legs</label><input id="maxlegs" type="number" value="8" min="2" max="12"/>
+<label>Bet Types</label><div class="checks">
+<label class="check"><input type="checkbox" checked/> Player props</label><label class="check"><input type="checkbox" checked/> Spreads</label><label class="check"><input type="checkbox" checked/> Moneylines</label><label class="check"><input type="checkbox" checked/> Totals</label><label class="check"><input type="checkbox"/> Alternate lines</label><label class="check"><input type="checkbox"/> Anytime TD</label>
+</div>
+<label>Risk Preference</label><select id="riskPref"><option>Balanced</option><option>Conservative</option><option>Aggressive</option><option>Show all</option></select>
+<label>Betting Style</label><select><option>Either</option><option>Single-game</option><option>Multi-game</option></select>
+<label>Additional Preferences</label><textarea id="prefs">Prioritize player props and spreads. Don't force a leg.</textarea>
+<button class="btn primary full" onclick="runAnalysis()">↻ Run Research</button>
+<div class="footer-note">Prototype uses realistic mock data. Every market value is labeled as mock until live data connectors are added.</div>
+</aside>
+<main>
+<div class="summary">
+<div class="metric"><div class="eyebrow">Game</div><div class="v">PIT @ CLE</div><div class="s">Thu • 8:15 PM ET</div></div>
+<div class="metric"><div class="eyebrow">Candidates</div><div class="v" id="candidateCount">7</div><div class="s">meeting research filters</div></div>
+<div class="metric"><div class="eyebrow">Best Edge</div><div class="v green" id="bestEdge">+6.7%</div><div class="s">estimated minus implied</div></div>
+<div class="metric"><div class="eyebrow">Model Confidence</div><div class="v yellow">MEDIUM</div><div class="s">uncertainty remains</div></div>
+<div class="metric"><div class="eyebrow">Research Time</div><div class="v">13:52 ET</div><div class="s">mock timestamp</div></div>
+</div>
+
+<div class="section"><div class="section-head"><div><div class="eyebrow">01 / Current Market</div><h2>Market Overview</h2></div><span class="pill y">MOCK DATA</span></div>
+<div class="card market-grid">
+<div class="kv"><span class="muted">FanDuel spread</span><b>CLE +2.5 · -110</b><span class="sub">Open: +3.0</span></div>
+<div class="kv"><span class="muted">Total</span><b>O 39.5 · -110</b><span class="sub">Open: 38.5</span></div>
+<div class="kv"><span class="muted">Weather</span><b>52°F · 8 mph</b><span class="sub">Outdoor / light wind</span></div>
+<div class="kv"><span class="muted">Availability</span><b class="yellow">Monitor</b><span class="sub">Practice reports pending</span></div>
+</div></div>
+
+<div class="section"><div class="section-head"><div><div class="eyebrow">02 / Candidate Discovery</div><h2>Bet Candidates</h2></div><div class="filters" id="filters"></div></div>
+<div class="card table-wrap"><table class="table"><thead><tr><th></th><th>Bet</th><th>Book</th><th>Odds</th><th>Implied</th><th>Estimated</th><th>Edge</th><th>Confidence</th><th>Risk</th></tr></thead><tbody id="betBody"></tbody></table></div></div>
+
+<div class="section"><div class="section-head"><div><div class="eyebrow">03 / Construction</div><h2>Parlay Builder</h2></div><span class="muted">Correlation-adjusted probability</span></div><div class="parlays" id="parlays"></div></div>
+
+<div class="section grid2">
+<div><div class="section-head"><div><div class="eyebrow">04 / Pre-Bet Control</div><h2>Things to Check Before Betting</h2></div></div>
+<div class="card">
+<div class="alert"><div><b>Injury designations</b><div class="sub">Confirm final availability for key skill players.</div></div><span class="status yellow">YELLOW · MONITOR</span></div>
+<div class="alert"><div><b>Starting lineup</b><div class="sub">Verify offensive personnel before kickoff.</div></div><span class="status yellow">YELLOW · MONITOR</span></div>
+<div class="alert"><div><b>Weather</b><div class="sub">Wind currently not modeled as a major concern.</div></div><span class="status green">GREEN · CLEAR</span></div>
+<div class="alert"><div><b>Prop movement</b><div class="sub">Recheck lines immediately before placing the ticket.</div></div><span class="status yellow">YELLOW · MONITOR</span></div>
+</div></div>
+<div><div class="section-head"><div><div class="eyebrow">05 / Staking</div><h2>Ticket Allocation</h2></div></div>
+<div class="card"><div class="allocation">
+<div><div class="muted">Bankroll</div><h2 id="bankDisplay">$100</h2></div><div><div class="muted">Risk</div><h2 id="riskDisplay">$10</h2></div>
+</div>
+<div class="allocrow"><b>Conservative</b><input id="a1" type="range" min="0" max="10" value="6" oninput="syncAlloc()"/><b id="a1v">$6</b></div>
+<div class="allocrow"><b>Balanced</b><input id="a2" type="range" min="0" max="10" value="3" oninput="syncAlloc()"/><b id="a2v">$3</b></div>
+<div class="allocrow"><b>Aggressive</b><input id="a3" type="range" min="0" max="10" value="1" oninput="syncAlloc()"/><b id="a3v">$1</b></div>
+<button class="btn" onclick="equalize()">Set 10 / 10 / 10</button></div></div>
+</div>
+
+<div class="section"><div class="section-head"><div><div class="eyebrow">06 / Final Analysis</div><h2>Research Summary</h2></div></div>
+<div class="card" id="final"></div></div>
+</main></div>
+<script>
+const baseBets=[
+{id:1,name:"Jaylen Warren O65.5 rushing yards",type:"Player Prop",odds:-115,est:.60,conf:"Medium",risk:"Medium",corr:"positive",reason:"Projected rushing volume benefits from a competitive script; matchup and expected workload support the over.",stats:"Usage/volume + matchup",riskText:"Early deficit or reduced workload could shift attempts toward passing.",invalid:"Unexpected snap-count limitation or major offensive-line change."},
+{id:2,name:"Roman Wilson O22.5 receiving yards",type:"Player Prop",odds:-105,est:.59,conf:"Medium",risk:"Medium",corr:"positive",reason:"Target opportunity creates a modest edge at a relatively low yardage threshold.",stats:"Target share + route expectation",riskText:"Uncertain rotation creates wider variance than the raw projection suggests.",invalid:"Inactive/limited participation or unexpected personnel usage."},
+{id:3,name:"Pat Freiermuth O28.5 receiving yards",type:"Player Prop",odds:-110,est:.60,conf:"Medium",risk:"Medium",corr:"positive",reason:"Tight-end route volume and short-area usage support a stable floor.",stats:"Routes + short-area targets",riskText:"Red-zone role does not guarantee yardage; game script can suppress volume.",invalid:"Role change or snap restriction."},
+{id:4,name:"Browns +2.5",type:"Spread",odds:-110,est:.56,conf:"Medium",risk:"Low",corr:"neutral",reason:"Market moved toward Cleveland while the model sees a close-game distribution.",stats:"Line movement + matchup",riskText:"Turnovers and late-game variance dominate a narrow spread.",invalid:"Major QB/OL availability change."},
+{id:5,name:"Game Under 39.5",type:"Total",odds:-110,est:.54,conf:"Low",risk:"Medium",corr:"negative",reason:"Current price is close to model fair value with modest defensive/situational support.",stats:"Pace + scoring environment",riskText:"Explosive plays can break a low total quickly.",invalid:"Weather shift or unexpected tempo/lineup news."},
+{id:6,name:"Steelers ML",type:"Moneyline",odds:-135,est:.55,conf:"Low",risk:"Medium",corr:"neutral",reason:"Model makes Pittsburgh a modest favorite but price leaves limited room for error.",stats:"Win probability + price",riskText:"Negative expected value can appear even when a team is more likely to win.",invalid:"Key player inactive."},
+{id:7,name:"George Pickens O4.5 receptions",type:"Player Prop",odds:-125,est:.61,conf:"Medium",risk:"Medium",corr:"positive",reason:"Catch-volume angle pairs naturally with expected passing opportunity.",stats:"Routes + target volume",riskText:"Efficiency and game script can reduce reception count.",invalid:"Route participation changes."}
+];
+let bets=[...baseBets], active="All";
+function implied(o){return o<0?(-o)/(-o+100):100/(o+100)}
+function american(p){return p>=.5?Math.round(-100*p/(1-p)):Math.round(100*(1-p)/p)}
+function fmtOdds(o){return o>0?"+"+o:o}
+function edge(b){return b.est-implied(b.odds)}
+function runAnalysis(){
+ const book=document.getElementById("book").value;
+ bets=baseBets.map(b=>({...b,book}));
+ document.getElementById("candidateCount").textContent=bets.length;
+ document.getElementById("bestEdge").textContent="+"+(Math.max(...bets.map(edge))*100).toFixed(1)+"%";
+ renderFilters();renderBets();renderParlays();renderFinal();
+}
+function renderFilters(){
+ document.getElementById("filters").innerHTML=["All","Player Prop","Spread","Total","Moneyline"].map(x=>`<button class="${active===x?'active':''}" onclick="setFilter('${x}')">${x}</button>`).join("");
+}
+function setFilter(x){active=x;renderFilters();renderBets()}
+function renderBets(){
+ const arr=active==="All"?bets:bets.filter(b=>b.type===active);
+ document.getElementById("betBody").innerHTML=arr.map(b=>`
+ <tr onclick="toggle(${b.id})">
+ <td>＋</td><td><div class="betname">${b.name}</div><div class="sub">${b.type}</div></td><td>${b.book}</td>
+ <td>${fmtOdds(b.odds)}</td><td>${(implied(b.odds)*100).toFixed(1)}%</td><td>${(b.est*100).toFixed(1)}%</td>
+ <td class="${edge(b)>0?'green':'red'}"><b>${edge(b)>=0?'+':''}${(edge(b)*100).toFixed(1)}%</b></td>
+ <td><span class="pill ${b.conf==="Medium"?'y':'r'}">${b.conf}</span></td><td>${b.risk}</td></tr>
+ <tr class="expand" id="exp${b.id}"><td colspan="9"><div class="reason-grid">
+ <div class="reason"><h4>Why considered</h4>${b.reason}<div class="sub" style="margin-top:6px">${b.stats}</div></div>
+ <div class="reason"><h4>Risks</h4>${b.riskText}</div>
+ <div class="reason"><h4>Invalidating information</h4>${b.invalid}</div>
+ </div></td></tr>`).join("");
+}
+function toggle(id){const e=document.getElementById("exp"+id);e.style.display=e.style.display==="table-row"?"none":"table-row"}
+function parlay(name,ids,adjust){
+ const legs=ids.map(id=>bets.find(b=>b.id===id));let p=legs.reduce((x,b)=>x*b.est,1)*adjust;
+ const odds=american(p);const impliedP=legs.reduce((x,b)=>x*implied(b.odds),1);
+ const corr=adjust>1?"MODERATE POSITIVE":adjust<1?"MIXED / NEGATIVE":"MOSTLY INDEPENDENT";
+ return {name,legs,p,odds,impliedP,corr};
+}
+function renderParlays(){
+ const pool=bets.filter(b=>edge(b)>0).sort((a,b)=>edge(b)-edge(a));
+ const sets=[
+  parlay("Conservative",pool.slice(0,3).map(x=>x.id),1.10),
+  parlay("Balanced",pool.slice(0,4).map(x=>x.id),1.07),
+  parlay("Aggressive",pool.slice(0,6).map(x=>x.id),.96),
+  parlay("Best Value",pool.slice(0,3).map(x=>x.id),1.06)
+ ];
+ document.getElementById("parlays").innerHTML=sets.map(p=>`<div class="card parlay"><div class="eyebrow">${p.name}</div><h3>${p.legs.length} LEG · ${fmtOdds(p.odds)}</h3>
+ <div class="legs">${p.legs.map((l,i)=>`<div class="leg"><span class="num">${i+1}</span><span>${l.name}<div class="sub">${fmtOdds(l.odds)} · est ${(l.est*100).toFixed(0)}%</div></span></div>`).join("")}</div>
+ <div class="big">${(p.p*100).toFixed(1)}% <span class="sub">estimated probability</span></div>
+ <div class="parlay-footer"><div class="mini"><small>COMBINED IMPLIED</small><b>${(p.impliedP*100).toFixed(1)}%</b></div><div class="mini"><small>FAIR ODDS</small><b>${fmtOdds(p.odds)}</b></div><div class="mini"><small>CORRELATION</small><b>${p.corr}</b></div><div class="mini"><small>VALUE</small><b class="green">${((p.p-p.impliedP)*100).toFixed(1)} pts</b></div></div></div>`).join("");
+}
+function syncAlloc(){
+ const r=+document.getElementById("risk").value;
+ ["a1","a2","a3"].forEach((id,i)=>document.getElementById(id+"v").textContent="$"+(+document.getElementById(id).value));
+}
+function equalize(){["a1","a2","a3"].forEach(id=>document.getElementById(id).value=10);syncAlloc()}
+function renderFinal(){
+ const strong=bets.filter(b=>edge(b)>0.05).sort((a,b)=>edge(b)-edge(a)).slice(0,4);
+ document.getElementById("final").innerHTML=`<div class="grid2"><div><div class="eyebrow">Strongest individual opportunities</div><ul>${strong.map(b=>`<li><b>${b.name}</b> — +${(edge(b)*100).toFixed(1)} pts edge, ${b.conf.toLowerCase()} confidence</li>`).join("")}</ul></div><div><div class="eyebrow">Methodology status</div><p class="muted">Verified information: none — this prototype is using mock market data.</p><p class="muted">Model inference: probability estimates shown in the candidate table.</p><p class="muted">Assumptions: correlation adjustments are illustrative and must be replaced by a calibrated model.</p></div></div>
+ <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border)"><b class="yellow">Important:</b> Re-check injuries, starters, weather and line movement immediately before betting. Probabilities are estimates, not guarantees.</div>`;
+}
+document.getElementById("risk").addEventListener("input",()=>{document.getElementById("riskDisplay").textContent="$"+document.getElementById("risk").value});
+document.getElementById("bankroll").addEventListener("input",()=>{document.getElementById("bankDisplay").textContent="$"+document.getElementById("bankroll").value});
+renderFilters();runAnalysis();syncAlloc();
+</script>
+</body>
+</html>
