@@ -14,6 +14,85 @@ from .calculations import (
     american_odds,
     edge,
 )
+from .providers.weather import WeatherProvider, WeatherProviderError
+from .providers.news import NewsProvider, NewsProviderError
+weather_provider = WeatherProvider()
+news_provider = NewsProvider()
+@app.get("/api/v1/research")
+async def research(
+    event_id: str,
+    sport: str = "americanfootball_nfl",
+    news_query: str | None = None,
+):
+    """
+    Gather current research surrounding a selected event.
+
+    This endpoint intentionally does not manufacture a probability.
+    It returns the underlying research inputs first.
+    """
+
+    event = None
+
+    try:
+        events = await provider.events(sport)
+
+        for candidate in events:
+            if candidate.get("id") == event_id:
+                event = candidate
+                break
+
+        if not event:
+            raise HTTPException(
+                404,
+                "Event not found."
+            )
+
+        home_team = event.get("home_team", "")
+        away_team = event.get("away_team", "")
+
+        query = news_query or (
+            f'"{home_team}" OR "{away_team}" '
+            f'NFL injury news'
+        )
+
+        news = await news_provider.search(
+            query,
+            limit=10,
+        )
+
+        return {
+            "event": {
+                "id": event.get("id"),
+                "sport_key": event.get("sport_key"),
+                "sport_title": event.get("sport_title"),
+                "commence_time": event.get(
+                    "commence_time"
+                ),
+                "home_team": home_team,
+                "away_team": away_team,
+            },
+            "research": {
+                "news": news,
+                "news_query": query,
+            },
+            "model_status": (
+                "RESEARCH DATA GATHERED — "
+                "PROBABILITY MODEL NOT YET APPLIED"
+            ),
+            "fetched_at": datetime.now(timezone.utc),
+        }
+
+    except NewsProviderError as exc:
+        raise HTTPException(
+            502,
+            str(exc)
+        )
+
+    except OddsApiError as exc:
+        raise HTTPException(
+            502,
+            str(exc)
+        )
 
 
 settings = get_settings()
