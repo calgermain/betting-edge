@@ -4,114 +4,1222 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>Edge Terminal — Sports Betting Research</title>
+
 <style>
-:root{--bg:#070b10;--panel:#0d131b;--panel2:#111923;--border:#1e2a37;--text:#e7edf4;--muted:#8997a7;--green:#42d392;--yellow:#f0c75e;--red:#ff6b6b;--blue:#67a7ff;--purple:#a98cff}
-*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:14px/1.45 Inter,ui-sans-serif,system-ui,-apple-system,Segoe UI,sans-serif}
-button,input,select,textarea{font:inherit}button{cursor:pointer}
-.top{height:64px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 24px;background:#090e14;position:sticky;top:0;z-index:5}
-.brand{display:flex;gap:12px;align-items:center;font-weight:800;letter-spacing:.04em}.logo{width:32px;height:32px;border:1px solid #35506a;border-radius:8px;display:grid;place-items:center;color:var(--green);background:#0d1822}
-.live{font-size:11px;color:var(--green);border:1px solid #23543f;border-radius:99px;padding:4px 8px}
-.layout{display:grid;grid-template-columns:310px 1fr;min-height:calc(100vh - 64px)}
-aside{border-right:1px solid var(--border);padding:20px;background:#090e14}
-main{padding:22px;max-width:1700px;width:100%;margin:auto}
-h1,h2,h3,p{margin-top:0}.eyebrow{text-transform:uppercase;letter-spacing:.13em;color:var(--muted);font-size:10px;font-weight:800}
-label{display:block;color:#aab6c4;font-size:11px;font-weight:700;margin:14px 0 6px}
-input,select,textarea{width:100%;background:#0a1017;color:var(--text);border:1px solid var(--border);border-radius:7px;padding:9px 10px;outline:none}
-input:focus,select:focus,textarea:focus{border-color:#355c7d}textarea{resize:vertical;min-height:70px}
-.row{display:grid;grid-template-columns:1fr 1fr;gap:8px}.checks{display:grid;grid-template-columns:1fr 1fr;gap:7px}.check{display:flex;align-items:center;gap:6px;color:#aeb9c6;font-size:11px}.check input{width:auto}
-.btn{border:1px solid var(--border);background:#101923;color:var(--text);padding:10px 12px;border-radius:7px;font-weight:750}.btn.primary{background:#153a2b;border-color:#246f4e;color:#baf7dc}.btn.full{width:100%;margin-top:14px}
-.summary{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:18px}.metric,.card{background:var(--panel);border:1px solid var(--border);border-radius:9px}.metric{padding:13px}.metric .v{font-size:20px;font-weight:800;margin-top:4px}.metric .s{font-size:10px;color:var(--muted)}
-.section{margin-top:18px}.section-head{display:flex;justify-content:space-between;align-items:end;margin-bottom:10px}.section-head h2{font-size:16px;margin:0}
-.grid2{display:grid;grid-template-columns:1.3fr .7fr;gap:12px}.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
-.card{padding:15px}.market-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:9px}.kv{padding:10px;background:#0a1017;border:1px solid #172330;border-radius:7px}.kv b{display:block;margin-top:3px}.muted{color:var(--muted)}.green{color:var(--green)}.yellow{color:var(--yellow)}.red{color:var(--red)}.blue{color:var(--blue)}
-table{width:100%;border-collapse:collapse}.table-wrap{overflow:auto}.table th{font-size:10px;text-transform:uppercase;color:#748293;text-align:left;padding:9px;border-bottom:1px solid var(--border);white-space:nowrap}.table td{padding:11px 9px;border-bottom:1px solid #16212c;vertical-align:top}.table tr:hover{background:#101923}.betname{font-weight:750}.sub{font-size:10px;color:var(--muted);margin-top:2px}
-.pill{display:inline-flex;align-items:center;border-radius:99px;padding:3px 7px;font-size:10px;font-weight:800;border:1px solid #293746}.pill.g{color:var(--green);border-color:#22563f;background:#0b1c15}.pill.y{color:var(--yellow);border-color:#5b4d26;background:#1b170b}.pill.r{color:var(--red);border-color:#5c2929;background:#1b0e0e}
-.filters{display:flex;gap:7px;flex-wrap:wrap}.filters button{font-size:11px;padding:6px 9px;background:#0c131b;color:#91a0b0;border:1px solid var(--border);border-radius:6px}.filters button.active{color:#dbe7f2;border-color:#3a5268;background:#15212d}
-.expand{display:none;background:#0a1017}.expand td{padding:14px}.reason-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}.reason h4{font-size:10px;text-transform:uppercase;color:#718091;margin:0 0 5px}
-.parlays{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}.parlay{position:relative}.parlay h3{font-size:13px;margin-bottom:3px}.legs{margin:12px 0}.leg{display:flex;gap:8px;padding:7px 0;border-bottom:1px solid #17212c}.num{color:#607184;width:17px}.parlay .big{font-size:22px;font-weight:850}.parlay-footer{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:12px}.mini{background:#0a1017;border:1px solid #172330;border-radius:6px;padding:7px}.mini small{display:block;color:#718091;font-size:9px}.mini b{font-size:12px}
-.alert{display:flex;justify-content:space-between;gap:10px;padding:10px;border:1px solid var(--border);border-radius:7px;margin-bottom:7px;background:#0a1017}.status{font-size:10px;font-weight:850}.allocation{display:grid;grid-template-columns:1fr 1fr;gap:12px}.allocrow{display:grid;grid-template-columns:100px 1fr 80px;gap:8px;align-items:center;margin:8px 0}.allocrow input{padding:7px}
-.footer-note{color:#667585;font-size:10px;margin-top:18px}
-@media(max-width:1100px){.layout{grid-template-columns:1fr}aside{border-right:0;border-bottom:1px solid var(--border)}.summary{grid-template-columns:repeat(3,1fr)}.parlays{grid-template-columns:1fr 1fr}.grid2,.grid3{grid-template-columns:1fr}}
-@media(max-width:650px){main{padding:12px}.summary,.market-grid,.parlays{grid-template-columns:1fr 1fr}.reason-grid{grid-template-columns:1fr}.top{padding:0 12px}}
+:root{
+  --bg:#070b10;
+  --panel:#0d131b;
+  --panel2:#111923;
+  --border:#1e2a37;
+  --text:#e7edf4;
+  --muted:#8997a7;
+  --green:#42d392;
+  --yellow:#f0c75e;
+  --red:#ff6b6b;
+  --blue:#67a7ff;
+  --purple:#a98cff
+}
+
+*{box-sizing:border-box}
+
+body{
+  margin:0;
+  background:var(--bg);
+  color:var(--text);
+  font:14px/1.45 Inter,ui-sans-serif,system-ui,-apple-system,Segoe UI,sans-serif
+}
+
+button,input,select,textarea{font:inherit}
+button{cursor:pointer}
+
+.top{
+  height:64px;
+  border-bottom:1px solid var(--border);
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:0 24px;
+  background:#090e14;
+  position:sticky;
+  top:0;
+  z-index:5
+}
+
+.brand{
+  display:flex;
+  gap:12px;
+  align-items:center;
+  font-weight:800;
+  letter-spacing:.04em
+}
+
+.logo{
+  width:32px;
+  height:32px;
+  border:1px solid #35506a;
+  border-radius:8px;
+  display:grid;
+  place-items:center;
+  color:var(--green);
+  background:#0d1822
+}
+
+.live{
+  font-size:11px;
+  color:var(--green);
+  border:1px solid #23543f;
+  border-radius:99px;
+  padding:4px 8px
+}
+
+.layout{
+  display:grid;
+  grid-template-columns:310px 1fr;
+  min-height:calc(100vh - 64px)
+}
+
+aside{
+  border-right:1px solid var(--border);
+  padding:20px;
+  background:#090e14
+}
+
+main{
+  padding:22px;
+  max-width:1700px;
+  width:100%;
+  margin:auto
+}
+
+h1,h2,h3,p{margin-top:0}
+
+.eyebrow{
+  text-transform:uppercase;
+  letter-spacing:.13em;
+  color:var(--muted);
+  font-size:10px;
+  font-weight:800
+}
+
+label{
+  display:block;
+  color:#aab6c4;
+  font-size:11px;
+  font-weight:700;
+  margin:14px 0 6px
+}
+
+input,select,textarea{
+  width:100%;
+  background:#0a1017;
+  color:var(--text);
+  border:1px solid var(--border);
+  border-radius:7px;
+  padding:9px 10px;
+  outline:none
+}
+
+input:focus,select:focus,textarea:focus{
+  border-color:#355c7d
+}
+
+textarea{
+  resize:vertical;
+  min-height:70px
+}
+
+.row{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px
+}
+
+.checks{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:7px
+}
+
+.check{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  color:#aeb9c6;
+  font-size:11px
+}
+
+.check input{width:auto}
+
+.btn{
+  border:1px solid var(--border);
+  background:#101923;
+  color:var(--text);
+  padding:10px 12px;
+  border-radius:7px;
+  font-weight:750
+}
+
+.btn.primary{
+  background:#153a2b;
+  border-color:#246f4e;
+  color:#baf7dc
+}
+
+.btn.full{
+  width:100%;
+  margin-top:14px
+}
+
+.summary{
+  display:grid;
+  grid-template-columns:repeat(5,1fr);
+  gap:10px;
+  margin-bottom:18px
+}
+
+.metric,.card{
+  background:var(--panel);
+  border:1px solid var(--border);
+  border-radius:9px
+}
+
+.metric{padding:13px}
+
+.metric .v{
+  font-size:20px;
+  font-weight:800;
+  margin-top:4px
+}
+
+.metric .s{
+  font-size:10px;
+  color:var(--muted)
+}
+
+.section{margin-top:18px}
+
+.section-head{
+  display:flex;
+  justify-content:space-between;
+  align-items:end;
+  margin-bottom:10px
+}
+
+.section-head h2{
+  font-size:16px;
+  margin:0
+}
+
+.grid2{
+  display:grid;
+  grid-template-columns:1.3fr .7fr;
+  gap:12px
+}
+
+.grid3{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:12px
+}
+
+.card{padding:15px}
+
+.market-grid{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:9px
+}
+
+.kv{
+  padding:10px;
+  background:#0a1017;
+  border:1px solid #172330;
+  border-radius:7px
+}
+
+.kv b{
+  display:block;
+  margin-top:3px
+}
+
+.muted{color:var(--muted)}
+.green{color:var(--green)}
+.yellow{color:var(--yellow)}
+.red{color:var(--red)}
+.blue{color:var(--blue)}
+
+table{
+  width:100%;
+  border-collapse:collapse
+}
+
+.table-wrap{overflow:auto}
+
+.table th{
+  font-size:10px;
+  text-transform:uppercase;
+  color:#748293;
+  text-align:left;
+  padding:9px;
+  border-bottom:1px solid var(--border);
+  white-space:nowrap
+}
+
+.table td{
+  padding:11px 9px;
+  border-bottom:1px solid #16212c;
+  vertical-align:top
+}
+
+.table tr:hover{background:#101923}
+
+.betname{font-weight:750}
+
+.sub{
+  font-size:10px;
+  color:var(--muted);
+  margin-top:2px
+}
+
+.pill{
+  display:inline-flex;
+  align-items:center;
+  border-radius:99px;
+  padding:3px 7px;
+  font-size:10px;
+  font-weight:800;
+  border:1px solid #293746
+}
+
+.pill.g{
+  color:var(--green);
+  border-color:#22563f;
+  background:#0b1c15
+}
+
+.pill.y{
+  color:var(--yellow);
+  border-color:#5b4d26;
+  background:#1b170b
+}
+
+.pill.r{
+  color:var(--red);
+  border-color:#5c2929;
+  background:#1b0e0e
+}
+
+.pill.b{
+  color:var(--blue);
+  border-color:#284d76;
+  background:#0c1827
+}
+
+.filters{
+  display:flex;
+  gap:7px;
+  flex-wrap:wrap
+}
+
+.filters button{
+  font-size:11px;
+  padding:6px 9px;
+  background:#0c131b;
+  color:#91a0b0;
+  border:1px solid var(--border);
+  border-radius:6px
+}
+
+.filters button.active{
+  color:#dbe7f2;
+  border-color:#3a5268;
+  background:#15212d
+}
+
+.expand{
+  display:none;
+  background:#0a1017
+}
+
+.expand td{padding:14px}
+
+.reason-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr 1fr;
+  gap:12px
+}
+
+.reason h4{
+  font-size:10px;
+  text-transform:uppercase;
+  color:#718091;
+  margin:0 0 5px
+}
+
+.parlays{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:10px
+}
+
+.parlay{
+  position:relative
+}
+
+.parlay h3{
+  font-size:13px;
+  margin-bottom:3px
+}
+
+.legs{margin:12px 0}
+
+.leg{
+  display:flex;
+  gap:8px;
+  padding:7px 0;
+  border-bottom:1px solid #17212c
+}
+
+.num{
+  color:#607184;
+  width:17px
+}
+
+.parlay .big{
+  font-size:22px;
+  font-weight:850
+}
+
+.parlay-footer{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:6px;
+  margin-top:12px
+}
+
+.mini{
+  background:#0a1017;
+  border:1px solid #172330;
+  border-radius:6px;
+  padding:7px
+}
+
+.mini small{
+  display:block;
+  color:#718091;
+  font-size:9px
+}
+
+.mini b{font-size:12px}
+
+.alert{
+  display:flex;
+  justify-content:space-between;
+  gap:10px;
+  padding:10px;
+  border:1px solid var(--border);
+  border-radius:7px;
+  margin-bottom:7px;
+  background:#0a1017
+}
+
+.status{
+  font-size:10px;
+  font-weight:850
+}
+
+.allocation{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:12px
+}
+
+.allocrow{
+  display:grid;
+  grid-template-columns:100px 1fr 80px;
+  gap:8px;
+  align-items:center;
+  margin:8px 0
+}
+
+.allocrow input{padding:7px}
+
+.footer-note{
+  color:#667585;
+  font-size:10px;
+  margin-top:18px
+}
+
+/* RESEARCH */
+
+.research-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:12px
+}
+
+.research-list{
+  display:grid;
+  gap:8px
+}
+
+.source-item{
+  padding:10px;
+  background:#0a1017;
+  border:1px solid #172330;
+  border-radius:7px
+}
+
+.source-item a{
+  color:#9bc5ff;
+  text-decoration:none
+}
+
+.source-item a:hover{text-decoration:underline}
+
+.source-meta{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+  margin-top:5px;
+  font-size:9px;
+  color:#718091
+}
+
+.research-status{
+  padding:12px;
+  background:#0a1017;
+  border:1px solid #172330;
+  border-radius:7px;
+  margin-bottom:10px
+}
+
+.weather-box{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:8px
+}
+
+.weather-value{
+  font-size:17px;
+  font-weight:800
+}
+
+.research-empty{
+  color:var(--muted);
+  padding:10px 0
+}
+
+@media(max-width:1100px){
+  .layout{grid-template-columns:1fr}
+  aside{
+    border-right:0;
+    border-bottom:1px solid var(--border)
+  }
+  .summary{grid-template-columns:repeat(3,1fr)}
+  .parlays{grid-template-columns:1fr 1fr}
+  .grid2,.grid3,.research-grid{grid-template-columns:1fr}
+}
+
+@media(max-width:650px){
+  main{padding:12px}
+  .summary,.market-grid,.parlays{grid-template-columns:1fr 1fr}
+  .reason-grid{grid-template-columns:1fr}
+  .weather-box{grid-template-columns:1fr 1fr}
+  .top{padding:0 12px}
+}
 </style>
 </head>
+
 <body>
-<header class="top"><div class="brand"><div class="logo">E</div><div>EDGE TERMINAL <span class="muted">/ SPORTS RESEARCH</span></div></div><div class="live">MOCK MARKET • 13:52 ET</div></header>
+
+<header class="top">
+  <div class="brand">
+    <div class="logo">E</div>
+    <div>
+      EDGE TERMINAL
+      <span class="muted">/ SPORTS RESEARCH</span>
+    </div>
+  </div>
+
+  <div class="live" id="connectionStatus">
+    CONNECTING
+  </div>
+</header>
+
 <div class="layout">
+
 <aside>
+
 <div class="eyebrow">Research Input</div>
-<h2 style="font-size:18px;margin:5px 0 16px">Build Analysis</h2>
-<label>Sport</label><select id="sport"><option>NFL</option><option>NBA</option><option>MLB</option><option>NHL</option><option>NCAA Football</option><option>NCAA Basketball</option><option>Other</option></select>
-<label>Date</label><input id="date" type="date" value="2026-10-01"/>
-<label>Game / Slate</label><select id="game"><option>Steelers @ Browns</option><option>Entire NFL slate</option><option>Multiple games</option></select>
-<label>Sportsbook</label><select id="book"><option>FanDuel</option><option>DraftKings</option><option>BetMGM</option><option>Caesars</option></select>
-<div class="row"><div><label>Bankroll</label><input id="bankroll" type="number" value="100"/></div><div><label>Risk</label><input id="risk" type="number" value="10"/></div></div>
-<label>Maximum Parlay Legs</label><input id="maxlegs" type="number" value="8" min="2" max="12"/>
-<label>Bet Types</label><div class="checks">
-<label class="check"><input type="checkbox" checked/> Player props</label><label class="check"><input type="checkbox" checked/> Spreads</label><label class="check"><input type="checkbox" checked/> Moneylines</label><label class="check"><input type="checkbox" checked/> Totals</label><label class="check"><input type="checkbox"/> Alternate lines</label><label class="check"><input type="checkbox"/> Anytime TD</label>
+
+<h2 style="font-size:18px;margin:5px 0 16px">
+  Build Analysis
+</h2>
+
+<label>Sport</label>
+
+<select id="sport">
+  <option>NFL</option>
+  <option>NBA</option>
+  <option>MLB</option>
+  <option>NHL</option>
+  <option>NCAA Football</option>
+  <option>NCAA Basketball</option>
+  <option>Other</option>
+</select>
+
+<label>Date</label>
+
+<input
+  id="date"
+  type="date"
+/>
+
+<label>Game / Slate</label>
+
+<select id="game">
+  <option>Loading games...</option>
+</select>
+
+<label>Sportsbook</label>
+
+<select id="book">
+  <option>FanDuel</option>
+  <option>DraftKings</option>
+  <option>BetMGM</option>
+  <option>Caesars</option>
+</select>
+
+<div class="row">
+
+  <div>
+    <label>Bankroll</label>
+    <input
+      id="bankroll"
+      type="number"
+      value="100"
+    />
+  </div>
+
+  <div>
+    <label>Risk</label>
+    <input
+      id="risk"
+      type="number"
+      value="10"
+    />
+  </div>
+
 </div>
-<label>Risk Preference</label><select id="riskPref"><option>Balanced</option><option>Conservative</option><option>Aggressive</option><option>Show all</option></select>
-<label>Betting Style</label><select><option>Either</option><option>Single-game</option><option>Multi-game</option></select>
-<label>Additional Preferences</label><textarea id="prefs">Prioritize player props and spreads. Don't force a leg.</textarea>
-<button class="btn primary full" onclick="runAnalysis()">↻ Run Research</button>
-<div class="footer-note">Prototype uses realistic mock data. Every market value is labeled as mock until live data connectors are added.</div>
+
+<label>Maximum Parlay Legs</label>
+
+<input
+  id="maxlegs"
+  type="number"
+  value="8"
+  min="2"
+  max="12"
+/>
+
+<label>Bet Types</label>
+
+<div class="checks">
+
+<label class="check">
+  <input type="checkbox" checked/>
+  Player props
+</label>
+
+<label class="check">
+  <input type="checkbox" checked/>
+  Spreads
+</label>
+
+<label class="check">
+  <input type="checkbox" checked/>
+  Moneylines
+</label>
+
+<label class="check">
+  <input type="checkbox" checked/>
+  Totals
+</label>
+
+<label class="check">
+  <input type="checkbox"/>
+  Alternate lines
+</label>
+
+<label class="check">
+  <input type="checkbox"/>
+  Anytime TD
+</label>
+
+</div>
+
+<label>Risk Preference</label>
+
+<select id="riskPref">
+  <option>Balanced</option>
+  <option>Conservative</option>
+  <option>Aggressive</option>
+  <option>Show all</option>
+</select>
+
+<label>Betting Style</label>
+
+<select id="betStyle">
+  <option>Either</option>
+  <option>Single-game</option>
+  <option>Multi-game</option>
+</select>
+
+<label>Additional Preferences</label>
+
+<textarea id="prefs">Prioritize player props and spreads. Don't force a leg.</textarea>
+
+<button
+  class="btn primary full"
+  onclick="runAnalysis()"
+  id="runButton"
+>
+  ↻ Run Research
+</button>
+
+<div class="footer-note">
+  Live sportsbook markets are supplied by The Odds API.
+  Current research is gathered from public sources.
+  Research evidence is not itself a guarantee or prediction.
+</div>
+
 </aside>
+
+
 <main>
+
 <div class="summary">
-<div class="metric"><div class="eyebrow">Game</div><div class="v">PIT @ CLE</div><div class="s">Thu • 8:15 PM ET</div></div>
-<div class="metric"><div class="eyebrow">Candidates</div><div class="v" id="candidateCount">7</div><div class="s">meeting research filters</div></div>
-<div class="metric"><div class="eyebrow">Best Edge</div><div class="v green" id="bestEdge">+6.7%</div><div class="s">estimated minus implied</div></div>
-<div class="metric"><div class="eyebrow">Model Confidence</div><div class="v yellow">MEDIUM</div><div class="s">uncertainty remains</div></div>
-<div class="metric"><div class="eyebrow">Research Time</div><div class="v">13:52 ET</div><div class="s">mock timestamp</div></div>
+
+<div class="metric">
+  <div class="eyebrow">Game</div>
+  <div class="v" id="gameHeader">
+    —
+  </div>
+  <div class="s" id="gameHeaderSub">
+    —
+  </div>
 </div>
 
-<div class="section"><div class="section-head"><div><div class="eyebrow">01 / Current Market</div><h2>Market Overview</h2></div><span class="pill y">MOCK DATA</span></div>
+<div class="metric">
+  <div class="eyebrow">Candidates</div>
+  <div class="v" id="candidateCount">0</div>
+  <div class="s">meeting research filters</div>
+</div>
+
+<div class="metric">
+  <div class="eyebrow">Best Edge</div>
+  <div class="v green" id="bestEdge">PENDING</div>
+  <div class="s">research model pending</div>
+</div>
+
+<div class="metric">
+  <div class="eyebrow">Research</div>
+  <div class="v yellow" id="researchConfidence">
+    WAITING
+  </div>
+  <div class="s">current evidence status</div>
+</div>
+
+<div class="metric">
+  <div class="eyebrow">API Credits</div>
+  <div class="v" id="quotaDisplay">—</div>
+  <div class="s">Odds API remaining</div>
+</div>
+
+</div>
+
+
+<!-- =====================================================
+     MARKET
+===================================================== -->
+
+<div class="section">
+
+<div class="section-head">
+
+<div>
+  <div class="eyebrow">01 / Current Market</div>
+  <h2>Market Overview</h2>
+</div>
+
+<span class="pill b">
+  LIVE
+</span>
+
+</div>
+
 <div class="card market-grid">
-<div class="kv"><span class="muted">FanDuel spread</span><b>CLE +2.5 · -110</b><span class="sub">Open: +3.0</span></div>
-<div class="kv"><span class="muted">Total</span><b>O 39.5 · -110</b><span class="sub">Open: 38.5</span></div>
-<div class="kv"><span class="muted">Weather</span><b>52°F · 8 mph</b><span class="sub">Outdoor / light wind</span></div>
-<div class="kv"><span class="muted">Availability</span><b class="yellow">Monitor</b><span class="sub">Practice reports pending</span></div>
-</div></div>
 
-<div class="section"><div class="section-head"><div><div class="eyebrow">02 / Candidate Discovery</div><h2>Bet Candidates</h2></div><div class="filters" id="filters"></div></div>
-<div class="card table-wrap"><table class="table"><thead><tr><th></th><th>Bet</th><th>Book</th><th>Odds</th><th>Implied</th><th>Estimated</th><th>Edge</th><th>Confidence</th><th>Risk</th></tr></thead><tbody id="betBody"></tbody></table></div></div>
+<div class="kv">
+  <span class="muted">Spread</span>
+  <b id="marketSpread">—</b>
+  <span class="sub">Current market</span>
+</div>
 
-<div class="section"><div class="section-head"><div><div class="eyebrow">03 / Construction</div><h2>Parlay Builder</h2></div><span class="muted">Correlation-adjusted probability</span></div><div class="parlays" id="parlays"></div></div>
+<div class="kv">
+  <span class="muted">Total</span>
+  <b id="marketTotal">—</b>
+  <span class="sub">Current market</span>
+</div>
+
+<div class="kv">
+  <span class="muted">Moneyline</span>
+  <b id="marketMoneyline">—</b>
+  <span class="sub">Current market</span>
+</div>
+
+<div class="kv">
+  <span class="muted">Research</span>
+  <b id="marketResearch" class="yellow">
+    Waiting
+  </b>
+  <span class="sub">Evidence layer</span>
+</div>
+
+</div>
+</div>
+
+
+<!-- =====================================================
+     RESEARCH
+===================================================== -->
+
+<div class="section">
+
+<div class="section-head">
+
+<div>
+  <div class="eyebrow">02 / Current Intelligence</div>
+  <h2>Game Research</h2>
+</div>
+
+<button
+  class="btn"
+  onclick="loadResearch(true)"
+>
+  ↻ Refresh Research
+</button>
+
+</div>
+
+<div class="card">
+
+<div
+  class="research-status"
+  id="researchStatus"
+>
+  Select a game to begin current research.
+</div>
+
+<div class="research-grid">
+
+<div>
+
+<div class="eyebrow">
+  Injury / Availability
+</div>
+
+<div
+  class="research-list"
+  id="injuryList"
+>
+  <div class="research-empty">
+    No research loaded.
+  </div>
+</div>
+
+</div>
+
+<div>
+
+<div class="eyebrow">
+  Team / Game News
+</div>
+
+<div
+  class="research-list"
+  id="newsList"
+>
+  <div class="research-empty">
+    No research loaded.
+  </div>
+</div>
+
+</div>
+
+</div>
+
+</div>
+</div>
+
+
+<!-- =====================================================
+     WEATHER
+===================================================== -->
+
+<div class="section">
+
+<div class="section-head">
+
+<div>
+  <div class="eyebrow">03 / Environment</div>
+  <h2>Weather & Conditions</h2>
+</div>
+
+<span
+  class="pill y"
+  id="weatherStatus"
+>
+  NOT LOADED
+</span>
+
+</div>
+
+<div class="card">
+
+<div
+  class="weather-box"
+  id="weatherBox"
+>
+
+<div class="kv">
+  <span class="muted">Temperature</span>
+  <div class="weather-value">—</div>
+</div>
+
+<div class="kv">
+  <span class="muted">Wind</span>
+  <div class="weather-value">—</div>
+</div>
+
+<div class="kv">
+  <span class="muted">Precipitation</span>
+  <div class="weather-value">—</div>
+</div>
+
+<div class="kv">
+  <span class="muted">Conditions</span>
+  <div class="weather-value">—</div>
+</div>
+
+</div>
+
+<div
+  class="sub"
+  id="weatherUpdated"
+  style="margin-top:10px"
+>
+  Weather data not loaded.
+</div>
+
+</div>
+</div>
+
+
+<!-- =====================================================
+     CANDIDATES
+===================================================== -->
+
+<div class="section">
+
+<div class="section-head">
+
+<div>
+  <div class="eyebrow">04 / Candidate Discovery</div>
+  <h2>Bet Candidates</h2>
+</div>
+
+<div
+  class="filters"
+  id="filters"
+></div>
+
+</div>
+
+<div class="card table-wrap">
+
+<table class="table">
+
+<thead>
+
+<tr>
+<th></th>
+<th>Bet</th>
+<th>Book</th>
+<th>Odds</th>
+<th>Implied</th>
+<th>Research</th>
+<th>Edge</th>
+<th>Confidence</th>
+<th>Risk</th>
+</tr>
+
+</thead>
+
+<tbody id="betBody"></tbody>
+
+</table>
+
+</div>
+</div>
+
+
+<!-- =====================================================
+     PARLAYS
+===================================================== -->
+
+<div class="section">
+
+<div class="section-head">
+
+<div>
+  <div class="eyebrow">05 / Construction</div>
+  <h2>Parlay Builder</h2>
+</div>
+
+<span class="muted">
+  Research-assisted combinations
+</span>
+
+</div>
+
+<div
+  class="parlays"
+  id="parlays"
+></div>
+
+</div>
+
+
+<!-- =====================================================
+     CONTROLS
+===================================================== -->
 
 <div class="section grid2">
-<div><div class="section-head"><div><div class="eyebrow">04 / Pre-Bet Control</div><h2>Things to Check Before Betting</h2></div></div>
-<div class="card">
-<div class="alert"><div><b>Injury designations</b><div class="sub">Confirm final availability for key skill players.</div></div><span class="status yellow">YELLOW · MONITOR</span></div>
-<div class="alert"><div><b>Starting lineup</b><div class="sub">Verify offensive personnel before kickoff.</div></div><span class="status yellow">YELLOW · MONITOR</span></div>
-<div class="alert"><div><b>Weather</b><div class="sub">Wind currently not modeled as a major concern.</div></div><span class="status green">GREEN · CLEAR</span></div>
-<div class="alert"><div><b>Prop movement</b><div class="sub">Recheck lines immediately before placing the ticket.</div></div><span class="status yellow">YELLOW · MONITOR</span></div>
-</div></div>
-<div><div class="section-head"><div><div class="eyebrow">05 / Staking</div><h2>Ticket Allocation</h2></div></div>
-<div class="card"><div class="allocation">
-<div><div class="muted">Bankroll</div><h2 id="bankDisplay">$100</h2></div><div><div class="muted">Risk</div><h2 id="riskDisplay">$10</h2></div>
-</div>
-<div class="allocrow"><b>Conservative</b><input id="a1" type="range" min="0" max="10" value="6" oninput="syncAlloc()"/><b id="a1v">$6</b></div>
-<div class="allocrow"><b>Balanced</b><input id="a2" type="range" min="0" max="10" value="3" oninput="syncAlloc()"/><b id="a2v">$3</b></div>
-<div class="allocrow"><b>Aggressive</b><input id="a3" type="range" min="0" max="10" value="1" oninput="syncAlloc()"/><b id="a3v">$1</b></div>
-<button class="btn" onclick="equalize()">Set 10 / 10 / 10</button></div></div>
+
+<div>
+
+<div class="section-head">
+
+<div>
+  <div class="eyebrow">06 / Pre-Bet Control</div>
+  <h2>Things to Check</h2>
 </div>
 
-<div class="section"><div class="section-head"><div><div class="eyebrow">06 / Final Analysis</div><h2>Research Summary</h2></div></div>
-<div class="card" id="final"></div></div>
-</main></div>
+</div>
+
+<div class="card" id="alerts">
+
+<div class="alert">
+<div>
+<b>Injury designations</b>
+<div class="sub">
+Confirm final player availability.
+</div>
+</div>
+
+<span class="status yellow">
+MONITOR
+</span>
+</div>
+
+<div class="alert">
+<div>
+<b>Starting lineup</b>
+<div class="sub">
+Verify starters before kickoff.
+</div>
+</div>
+
+<span class="status yellow">
+MONITOR
+</span>
+</div>
+
+<div class="alert">
+<div>
+<b>Weather</b>
+<div class="sub">
+Review wind and precipitation.
+</div>
+</div>
+
+<span class="status yellow">
+MONITOR
+</span>
+</div>
+
+<div class="alert">
+<div>
+<b>Market movement</b>
+<div class="sub">
+Recheck the line before betting.
+</div>
+</div>
+
+<span class="status yellow">
+MONITOR
+</span>
+</div>
+
+</div>
+
+</div>
+
+
+<div>
+
+<div class="section-head">
+
+<div>
+  <div class="eyebrow">07 / Staking</div>
+  <h2>Ticket Allocation</h2>
+</div>
+
+</div>
+
+<div class="card">
+
+<div class="allocation">
+
+<div>
+  <div class="muted">Bankroll</div>
+  <h2 id="bankDisplay">$100</h2>
+</div>
+
+<div>
+  <div class="muted">Risk</div>
+  <h2 id="riskDisplay">$10</h2>
+</div>
+
+</div>
+
+<div class="allocrow">
+<b>Conservative</b>
+<input
+  id="a1"
+  type="range"
+  min="0"
+  max="10"
+  value="6"
+  oninput="syncAlloc()"
+/>
+<b id="a1v">$6</b>
+</div>
+
+<div class="allocrow">
+<b>Balanced</b>
+<input
+  id="a2"
+  type="range"
+  min="0"
+  max="10"
+  value="3"
+  oninput="syncAlloc()"
+/>
+<b id="a2v">$3</b>
+</div>
+
+<div class="allocrow">
+<b>Aggressive</b>
+<input
+  id="a3"
+  type="range"
+  min="0"
+  max="10"
+  value="1"
+  oninput="syncAlloc()"
+/>
+<b id="a3v">$1</b>
+</div>
+
+<button
+  class="btn"
+  onclick="equalize()"
+>
+  Set 10 / 10 / 10
+</button>
+
+</div>
+
+</div>
+
+</div>
+
+
+<!-- =====================================================
+     FINAL
+===================================================== -->
+
+<div class="section">
+
+<div class="section-head">
+
+<div>
+  <div class="eyebrow">08 / Final Analysis</div>
+  <h2>Research Summary</h2>
+</div>
+
+</div>
+
+<div
+  class="card"
+  id="final"
+></div>
+
+</div>
+
+</main>
+
+</div>
+
+
 <script>
-const API_BASE = "https://betting-edge-api.onrender.com";
+
+/* =========================================================
+   CONFIG
+========================================================= */
+
+const API_BASE =
+  "https://betting-edge-api.onrender.com";
+
 
 const SPORT_MAP = {
-  "NFL": "americanfootball_nfl",
-  "NBA": "basketball_nba",
-  "MLB": "baseball_mlb",
-  "NHL": "icehockey_nhl",
-  "NCAA Football": "americanfootball_ncaaf",
-  "NCAA Basketball": "basketball_ncaab"
+
+  "NFL":
+    "americanfootball_nfl",
+
+  "NBA":
+    "basketball_nba",
+
+  "MLB":
+    "baseball_mlb",
+
+  "NHL":
+    "icehockey_nhl",
+
+  "NCAA Football":
+    "americanfootball_ncaaf",
+
+  "NCAA Basketball":
+    "basketball_ncaab"
+
 };
 
+
 const PROP_MARKETS = [
+
   "player_pass_yds",
   "player_pass_tds",
   "player_rush_yds",
@@ -119,76 +1227,82 @@ const PROP_MARKETS = [
   "player_reception_yds",
   "player_receptions",
   "player_anytime_td"
+
 ];
+
 
 let events = [];
 let selectedEventId = null;
 
 let oddsCache = {};
 let propsCache = {};
+let researchCache = {};
 
 let bets = [];
 let active = "All";
 
-let loading = false;
-
 let quota = {
-  remaining: null,
-  used: null,
-  last: null
+  remaining:null,
+  used:null,
+  last:null
 };
+
+let currentResearch = null;
 
 
 /* =========================================================
-   BASIC MATH
+   MATH
 ========================================================= */
 
-function implied(odds) {
+function implied(odds){
 
   odds = Number(odds);
 
-  if (!Number.isFinite(odds)) return 0;
+  if(!Number.isFinite(odds))
+    return 0;
 
   return odds < 0
-    ? (-odds) / (-odds + 100)
-    : 100 / (odds + 100);
+    ? (-odds)/(-odds+100)
+    : 100/(odds+100);
 
 }
 
 
-function american(probability) {
+function american(probability){
 
-  if (
+  probability = Number(probability);
+
+  if(
+    !Number.isFinite(probability) ||
     probability <= 0 ||
     probability >= 1
-  ) {
+  ){
     return 0;
   }
 
-  return probability >= 0.5
+  return probability >= .5
     ? Math.round(
         -100 * probability /
-        (1 - probability)
+        (1-probability)
       )
     : Math.round(
-        100 * (1 - probability) /
+        100 * (1-probability) /
         probability
       );
 
 }
 
 
-function fmtOdds(odds) {
+function fmtOdds(odds){
 
   const value =
     Number(odds);
 
-  if (!Number.isFinite(value)) {
+  if(!Number.isFinite(value))
     return "—";
-  }
 
   return value > 0
-    ? "+" + value
+    ? "+"+value
     : String(value);
 
 }
@@ -198,15 +1312,20 @@ function fmtOdds(odds) {
    API
 ========================================================= */
 
-async function api(path) {
+async function api(path){
 
   const response =
-    await fetch(API_BASE + path);
+    await fetch(
+      API_BASE + path
+    );
 
-  if (!response.ok) {
+  if(!response.ok){
+
+    const text =
+      await response.text();
 
     throw new Error(
-      `API request failed: ${response.status}`
+      `API ${response.status}: ${text}`
     );
 
   }
@@ -217,53 +1336,78 @@ async function api(path) {
 
 
 /* =========================================================
-   SPORT / GAME HELPERS
+   HELPERS
 ========================================================= */
 
-function currentSport() {
+function escapeHtml(value){
+
+  return String(
+    value ?? ""
+  )
+  .replaceAll("&","&amp;")
+  .replaceAll("<","&lt;")
+  .replaceAll(">","&gt;")
+  .replaceAll('"',"&quot;")
+  .replaceAll("'","&#039;");
+
+}
+
+
+function currentSport(){
 
   return SPORT_MAP[
-    document.getElementById("sport").value
+    document.getElementById(
+      "sport"
+    ).value
   ] || "americanfootball_nfl";
 
 }
 
 
-function currentEvent() {
+function currentEvent(){
 
   return events.find(
     event =>
-      event.id === selectedEventId
+      event.id ===
+      selectedEventId
   );
 
 }
 
 
-function eventLabel(event) {
+function eventLabel(event){
 
   return `${event.away_team} @ ${event.home_team}`;
 
 }
 
 
-function eventDate(event) {
+function eventDate(event){
 
-  if (!event.commence_time) {
+  if(!event.commence_time)
     return "";
-  }
 
   return new Date(
     event.commence_time
   ).toLocaleString(
     [],
     {
-      weekday: "short",
-      month: "short",
-      day: "numeric",
-      hour: "numeric",
-      minute: "2-digit"
+      weekday:"short",
+      month:"short",
+      day:"numeric",
+      hour:"numeric",
+      minute:"2-digit"
     }
   );
+
+}
+
+
+function selectedBook(){
+
+  return document.getElementById(
+    "book"
+  ).value;
 
 }
 
@@ -272,20 +1416,22 @@ function eventDate(event) {
    EVENTS
 ========================================================= */
 
-async function loadEvents() {
+async function loadEvents(){
 
   const sport =
     currentSport();
 
   const select =
-    document.getElementById("game");
+    document.getElementById(
+      "game"
+    );
 
   select.disabled = true;
 
   select.innerHTML =
     "<option>Loading games...</option>";
 
-  try {
+  try{
 
     const payload =
       await api(
@@ -296,60 +1442,57 @@ async function loadEvents() {
       payload.data || [];
 
     const chosenDate =
-      document.getElementById("date").value;
-
+      document.getElementById(
+        "date"
+      ).value;
 
     let matching =
-      events.filter(event => {
+      events.filter(
+        event =>
+          event.commence_time &&
+          event.commence_time
+            .slice(0,10) ===
+          chosenDate
+      );
 
-        if (!event.commence_time) {
-          return false;
-        }
-
-        return event.commence_time
-          .slice(0, 10)
-          === chosenDate;
-
-      });
-
-
-    if (!matching.length) {
+    if(!matching.length)
       matching = events;
-    }
-
 
     select.innerHTML = "";
 
-
-    if (!matching.length) {
+    if(!matching.length){
 
       select.innerHTML =
         "<option>No games available</option>";
 
       selectedEventId = null;
 
-      clearMarkets();
+      clearAll();
 
       return;
 
     }
 
+    matching.forEach(
+      event => {
 
-    matching.forEach(event => {
+        const option =
+          document.createElement(
+            "option"
+          );
 
-      const option =
-        document.createElement("option");
+        option.value =
+          event.id;
 
-      option.value =
-        event.id;
+        option.textContent =
+          `${eventLabel(event)} — ${eventDate(event)}`;
 
-      option.textContent =
-        `${eventLabel(event)} — ${eventDate(event)}`;
+        select.appendChild(
+          option
+        );
 
-      select.appendChild(option);
-
-    });
-
+      }
+    );
 
     selectedEventId =
       matching[0].id;
@@ -357,25 +1500,34 @@ async function loadEvents() {
     select.value =
       selectedEventId;
 
-
     updateGameHeader(
       matching[0]
     );
-
 
     await loadOdds(
       selectedEventId
     );
 
+    await loadResearch();
 
-  } catch (error) {
+  }
+  catch(error){
 
-    console.error(error);
+    console.error(
+      "Events error:",
+      error
+    );
 
     select.innerHTML =
       "<option>Unable to load games</option>";
 
-  } finally {
+    setConnection(
+      "API ERROR",
+      "red"
+    );
+
+  }
+  finally{
 
     select.disabled = false;
 
@@ -385,15 +1537,15 @@ async function loadEvents() {
 
 
 /* =========================================================
-   STANDARD ODDS
+   ODDS
 ========================================================= */
 
-async function loadOdds(eventId) {
+async function loadOdds(eventId){
 
-  if (!eventId) return;
+  if(!eventId)
+    return;
 
-
-  if (oddsCache[eventId]) {
+  if(oddsCache[eventId]){
 
     updateQuota(
       oddsCache[eventId].quota
@@ -407,40 +1559,51 @@ async function loadOdds(eventId) {
 
   }
 
-
   setLoading(true);
 
-
-  try {
+  try{
 
     const sport =
       currentSport();
 
+    /*
+      Standard odds are fetched once per event
+      and cached locally.
+    */
 
     const payload =
       await api(
-        `/api/v1/events/${encodeURIComponent(eventId)}/odds` +
+        `/api/v1/odds` +
         `?sport=${encodeURIComponent(sport)}` +
         `&markets=h2h,spreads,totals` +
         `&regions=us`
       );
 
-
     oddsCache[eventId] =
       payload;
-
 
     updateQuota(
       payload.quota
     );
 
+    /*
+      /odds may return multiple events.
+      Find the selected event.
+    */
+
+    const selected =
+      (payload.data || [])
+        .find(
+          item =>
+            item.id === eventId
+        );
 
     processStandardOdds(
-      payload.data
+      selected
     );
 
-
-  } catch (error) {
+  }
+  catch(error){
 
     console.error(
       "Odds error:",
@@ -449,7 +1612,8 @@ async function loadOdds(eventId) {
 
     clearMarkets();
 
-  } finally {
+  }
+  finally{
 
     setLoading(false);
 
@@ -462,12 +1626,12 @@ async function loadOdds(eventId) {
    PROPS
 ========================================================= */
 
-async function loadProps(eventId) {
+async function loadProps(eventId){
 
-  if (!eventId) return;
+  if(!eventId)
+    return;
 
-
-  if (propsCache[eventId]) {
+  if(propsCache[eventId]){
 
     updateQuota(
       propsCache[eventId].quota
@@ -481,44 +1645,34 @@ async function loadProps(eventId) {
 
   }
 
-
   setLoading(true);
 
-
-  try {
+  try{
 
     const sport =
       currentSport();
-
-
-    const markets =
-      PROP_MARKETS.join(",");
-
 
     const payload =
       await api(
         `/api/v1/events/${encodeURIComponent(eventId)}/props` +
         `?sport=${encodeURIComponent(sport)}` +
-        `&markets=${encodeURIComponent(markets)}` +
+        `&markets=${encodeURIComponent(PROP_MARKETS.join(","))}` +
         `&regions=us`
       );
 
-
     propsCache[eventId] =
       payload;
-
 
     updateQuota(
       payload.quota
     );
 
-
     processProps(
       payload.data
     );
 
-
-  } catch (error) {
+  }
+  catch(error){
 
     console.error(
       "Props error:",
@@ -529,7 +1683,8 @@ async function loadProps(eventId) {
       "Player props could not be loaded."
     );
 
-  } finally {
+  }
+  finally{
 
     setLoading(false);
 
@@ -539,128 +1694,151 @@ async function loadProps(eventId) {
 
 
 /* =========================================================
-   STANDARD MARKET NORMALIZATION
+   ODDS NORMALIZATION
 ========================================================= */
 
-function processStandardOdds(event) {
+function processStandardOdds(event){
 
-  if (!event) {
+  if(!event){
 
-    clearMarkets();
+    bets =
+      bets.filter(
+        b =>
+          b.type ===
+          "Player Prop"
+      );
+
+    renderAll();
 
     return;
 
   }
 
-
   const result = [];
 
-
   (event.bookmakers || [])
-    .forEach(book => {
+    .forEach(
+      book => {
 
-      (book.markets || [])
-        .forEach(market => {
+        (book.markets || [])
+          .forEach(
+            market => {
 
-          if (
-            ![
-              "h2h",
-              "spreads",
-              "totals"
-            ].includes(market.key)
-          ) {
-            return;
-          }
-
-
-          (market.outcomes || [])
-            .forEach(outcome => {
+              if(
+                ![
+                  "h2h",
+                  "spreads",
+                  "totals"
+                ].includes(
+                  market.key
+                )
+              ){
+                return;
+              }
 
               let type =
                 "Moneyline";
 
-
-              if (
-                market.key === "spreads"
-              ) {
-                type = "Spread";
+              if(
+                market.key ===
+                "spreads"
+              ){
+                type =
+                  "Spread";
               }
 
-
-              if (
-                market.key === "totals"
-              ) {
-                type = "Total";
+              if(
+                market.key ===
+                "totals"
+              ){
+                type =
+                  "Total";
               }
 
+              (market.outcomes || [])
+                .forEach(
+                  outcome => {
 
-              let displayName =
-                outcome.name;
+                    let displayName =
+                      outcome.name;
 
+                    if(
+                      outcome.point !==
+                      undefined &&
+                      outcome.point !==
+                      null
+                    ){
 
-              if (
-                outcome.point !== undefined &&
-                outcome.point !== null
-              ) {
+                      displayName +=
+                        ` ${outcome.point > 0 ? "+" : ""}${outcome.point}`;
 
-                displayName +=
-                  ` ${outcome.point > 0 ? "+" : ""}${outcome.point}`;
+                    }
 
-              }
+                    result.push({
 
+                      id:[
+                        event.id,
+                        book.key,
+                        market.key,
+                        outcome.name,
+                        outcome.point
+                      ].join("|"),
 
-              result.push({
+                      name:
+                        displayName,
 
-                id: [
-                  event.id,
-                  book.key,
-                  market.key,
-                  outcome.name,
-                  outcome.point
-                ].join("|"),
+                      rawName:
+                        outcome.name,
 
-                name:
-                  displayName,
+                      type,
 
-                rawName:
-                  outcome.name,
+                      marketKey:
+                        market.key,
 
-                type,
+                      odds:
+                        Number(
+                          outcome.price
+                        ),
 
-                marketKey:
-                  market.key,
+                      point:
+                        outcome.point,
 
-                odds:
-                  Number(outcome.price),
+                      book:
+                        book.title,
 
-                point:
-                  outcome.point,
+                      bookmakerKey:
+                        book.key,
 
-                book:
-                  book.title,
+                      implied:
+                        implied(
+                          outcome.price
+                        ),
 
-                bookmakerKey:
-                  book.key,
+                      description:
+                        outcome.description,
 
-                implied:
-                  implied(outcome.price),
+                      lastUpdate:
+                        market.last_update
 
-                description:
-                  outcome.description,
+                    });
 
-                lastUpdate:
-                  market.last_update
+                  }
+                );
 
-              });
+            }
+          );
 
-            });
+      }
+    );
 
-        });
-
-    });
-
-
-  bets = result;
+  bets = [
+    ...result,
+    ...bets.filter(
+      b =>
+        b.type ===
+        "Player Prop"
+    )
+  ];
 
   renderAll();
 
@@ -671,123 +1849,613 @@ function processStandardOdds(event) {
    PROP NORMALIZATION
 ========================================================= */
 
-function processProps(event) {
+function processProps(event){
 
-  if (!event) return;
-
+  if(!event)
+    return;
 
   const props = [];
 
-
   (event.bookmakers || [])
-    .forEach(book => {
+    .forEach(
+      book => {
 
-      (book.markets || [])
-        .forEach(market => {
+        (book.markets || [])
+          .forEach(
+            market => {
 
-          if (
-            !PROP_MARKETS.includes(
-              market.key
-            )
-          ) {
-            return;
-          }
-
-
-          (market.outcomes || [])
-            .forEach(outcome => {
-
-              let type =
-                "Player Prop";
-
-
-              const direction =
-                outcome.name || "";
-
-
-              let label =
-                outcome.description ||
-                outcome.name ||
-                market.key;
-
-
-              if (
-                outcome.point !== undefined &&
-                outcome.point !== null
-              ) {
-
-                label +=
-                  ` ${outcome.point > 0 ? "+" : ""}${outcome.point}`;
-
+              if(
+                !PROP_MARKETS.includes(
+                  market.key
+                )
+              ){
+                return;
               }
 
+              (market.outcomes || [])
+                .forEach(
+                  outcome => {
 
-              props.push({
+                    let label =
+                      outcome.description ||
+                      outcome.name ||
+                      market.key;
 
-                id: [
-                  event.id,
-                  book.key,
-                  market.key,
-                  outcome.name,
-                  outcome.point,
-                  outcome.description
-                ].join("|"),
+                    if(
+                      outcome.point !==
+                      undefined &&
+                      outcome.point !==
+                      null
+                    ){
 
-                name:
-                  label,
+                      label +=
+                        ` ${outcome.point > 0 ? "+" : ""}${outcome.point}`;
 
-                rawName:
-                  direction,
+                    }
 
-                type,
+                    props.push({
 
-                marketKey:
-                  market.key,
+                      id:[
+                        event.id,
+                        book.key,
+                        market.key,
+                        outcome.name,
+                        outcome.point,
+                        outcome.description
+                      ].join("|"),
 
-                odds:
-                  Number(outcome.price),
+                      name:
+                        label,
 
-                point:
-                  outcome.point,
+                      rawName:
+                        outcome.name,
 
-                book:
-                  book.title,
+                      type:
+                        "Player Prop",
 
-                bookmakerKey:
-                  book.key,
+                      marketKey:
+                        market.key,
 
-                implied:
-                  implied(outcome.price),
+                      odds:
+                        Number(
+                          outcome.price
+                        ),
 
-                description:
-                  outcome.description,
+                      point:
+                        outcome.point,
 
-                lastUpdate:
-                  market.last_update
+                      book:
+                        book.title,
 
-              });
+                      bookmakerKey:
+                        book.key,
 
-            });
+                      implied:
+                        implied(
+                          outcome.price
+                        ),
 
-        });
+                      description:
+                        outcome.description,
 
-    });
+                      lastUpdate:
+                        market.last_update
 
+                    });
 
-  /*
-    Keep standard markets and add props.
-  */
+                  }
+                );
+
+            }
+          );
+
+      }
+    );
 
   bets = [
     ...bets.filter(
       b =>
-        b.type !== "Player Prop"
+        b.type !==
+        "Player Prop"
     ),
     ...props
   ];
 
-
   renderAll();
+
+}
+
+
+/* =========================================================
+   RESEARCH
+========================================================= */
+
+async function loadResearch(force=false){
+
+  const event =
+    currentEvent();
+
+  if(!event)
+    return;
+
+  if(
+    researchCache[event.id] &&
+    !force
+  ){
+
+    currentResearch =
+      researchCache[event.id];
+
+    renderResearch();
+
+    return;
+
+  }
+
+  setResearchStatus(
+    "Gathering current news, availability reports and weather...",
+    "yellow"
+  );
+
+  try{
+
+    /*
+      We intentionally don't spend Odds API credits
+      here. Research uses the separate public research
+      sources configured in the backend.
+    */
+
+    const params =
+      new URLSearchParams({
+
+        home_team:
+          event.home_team,
+
+        away_team:
+          event.away_team
+
+      });
+
+    const payload =
+      await api(
+        `/api/v1/research/game?${params.toString()}`
+      );
+
+    currentResearch =
+      payload.data || {};
+
+    researchCache[event.id] =
+      currentResearch;
+
+    renderResearch();
+
+  }
+  catch(error){
+
+    console.error(
+      "Research error:",
+      error
+    );
+
+    currentResearch = null;
+
+    setResearchStatus(
+      "Research service unavailable. Current market data remains available.",
+      "red"
+    );
+
+    document.getElementById(
+      "researchConfidence"
+    ).textContent =
+      "UNAVAILABLE";
+
+  }
+
+}
+
+
+/* =========================================================
+   RESEARCH RENDERING
+========================================================= */
+
+function renderResearch(){
+
+  const data =
+    currentResearch;
+
+  if(!data)
+    return;
+
+  const injuries =
+    data.injuries || [];
+
+  const news =
+    data.all_news || [];
+
+  renderResearchList(
+    "injuryList",
+    injuries,
+    "No current injury/availability reports were found."
+  );
+
+  renderResearchList(
+    "newsList",
+    news.slice(0,10),
+    "No current news results were found."
+  );
+
+  renderWeather(
+    data.weather
+  );
+
+  const injuryCount =
+    injuries.length;
+
+  const newsCount =
+    news.length;
+
+  const confidence =
+    injuryCount ||
+    newsCount
+      ? "ACTIVE"
+      : "LIMITED";
+
+  document.getElementById(
+    "researchConfidence"
+  ).textContent =
+    confidence;
+
+  document.getElementById(
+    "marketResearch"
+  ).textContent =
+    confidence;
+
+  setResearchStatus(
+    `Research updated ${new Date(
+      data.generated_at ||
+      Date.now()
+    ).toLocaleTimeString()}. ` +
+    `${newsCount} current source(s) collected.`,
+    "green"
+  );
+
+  renderAlerts();
+
+  renderFinal();
+
+}
+
+
+function renderResearchList(
+  elementId,
+  items,
+  emptyText
+){
+
+  const container =
+    document.getElementById(
+      elementId
+    );
+
+  if(!items.length){
+
+    container.innerHTML =
+      `<div class="research-empty">
+        ${escapeHtml(emptyText)}
+      </div>`;
+
+    return;
+
+  }
+
+  container.innerHTML =
+    items.map(
+      item => {
+
+        const title =
+          item.title ||
+          "Untitled source";
+
+        const source =
+          item.source ||
+          "Unknown source";
+
+        const published =
+          item.published
+            ? new Date(
+                item.published
+              ).toLocaleString()
+            : "Time unavailable";
+
+        const summary =
+          item.summary || "";
+
+        const url =
+          item.url;
+
+        return `
+
+          <div class="source-item">
+
+            ${
+              url
+                ? `
+                  <a
+                    href="${escapeHtml(url)}"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    ${escapeHtml(title)}
+                  </a>
+                `
+                : `
+                  <b>
+                    ${escapeHtml(title)}
+                  </b>
+                `
+            }
+
+            <div class="sub">
+              ${escapeHtml(
+                summary.slice(0,220)
+              )}
+            </div>
+
+            <div class="source-meta">
+
+              <span>
+                ${escapeHtml(source)}
+              </span>
+
+              <span>
+                ${escapeHtml(published)}
+              </span>
+
+            </div>
+
+          </div>
+
+        `;
+
+      }
+    )
+    .join("");
+
+}
+
+
+function renderWeather(weather){
+
+  const box =
+    document.getElementById(
+      "weatherBox"
+    );
+
+  if(
+    !weather ||
+    weather.error
+  ){
+
+    box.innerHTML = `
+
+      <div class="kv">
+        <span class="muted">
+          Temperature
+        </span>
+        <div class="weather-value">
+          —
+        </div>
+      </div>
+
+      <div class="kv">
+        <span class="muted">
+          Wind
+        </span>
+        <div class="weather-value">
+          —
+        </div>
+      </div>
+
+      <div class="kv">
+        <span class="muted">
+          Precipitation
+        </span>
+        <div class="weather-value">
+          —
+        </div>
+      </div>
+
+      <div class="kv">
+        <span class="muted">
+          Conditions
+        </span>
+        <div class="weather-value">
+          Unavailable
+        </div>
+      </div>
+
+    `;
+
+    document.getElementById(
+      "weatherStatus"
+    ).textContent =
+      "UNAVAILABLE";
+
+    return;
+
+  }
+
+  const current =
+    weather.current || {};
+
+  const temp =
+    current.temperature_2m;
+
+  const wind =
+    current.wind_speed_10m;
+
+  const precipitation =
+    current.precipitation;
+
+  const code =
+    current.weather_code;
+
+  box.innerHTML = `
+
+    <div class="kv">
+      <span class="muted">
+        Temperature
+      </span>
+      <div class="weather-value">
+        ${
+          temp !== undefined
+            ? `${Math.round(temp)}°F`
+            : "—"
+        }
+      </div>
+    </div>
+
+    <div class="kv">
+      <span class="muted">
+        Wind
+      </span>
+      <div class="weather-value">
+        ${
+          wind !== undefined
+            ? `${Math.round(wind)} mph`
+            : "—"
+        }
+      </div>
+    </div>
+
+    <div class="kv">
+      <span class="muted">
+        Precipitation
+      </span>
+      <div class="weather-value">
+        ${
+          precipitation !== undefined
+            ? `${precipitation}`
+            : "—"
+        }
+      </div>
+    </div>
+
+    <div class="kv">
+      <span class="muted">
+        Conditions
+      </span>
+      <div class="weather-value">
+        ${weatherDescription(code)}
+      </div>
+    </div>
+
+  `;
+
+  document.getElementById(
+    "weatherStatus"
+  ).textContent =
+    "LIVE";
+
+  document.getElementById(
+    "weatherStatus"
+  ).className =
+    "pill g";
+
+  document.getElementById(
+    "weatherUpdated"
+  ).textContent =
+    "Current forecast retrieved from the weather provider.";
+
+}
+
+
+function weatherDescription(code){
+
+  const descriptions = {
+
+    0:"Clear",
+
+    1:"Mostly clear",
+    2:"Partly cloudy",
+    3:"Overcast",
+
+    45:"Fog",
+    48:"Rime fog",
+
+    51:"Light drizzle",
+    53:"Drizzle",
+    55:"Heavy drizzle",
+
+    61:"Light rain",
+    63:"Rain",
+    65:"Heavy rain",
+
+    71:"Light snow",
+    73:"Snow",
+    75:"Heavy snow",
+
+    80:"Rain showers",
+    81:"Rain showers",
+    82:"Heavy showers",
+
+    95:"Thunderstorm",
+
+    96:"Thunderstorm / hail",
+    99:"Thunderstorm / hail"
+
+  };
+
+  return (
+    descriptions[code] ||
+    "Unknown"
+  );
+
+}
+
+
+/* =========================================================
+   RESEARCH STATUS
+========================================================= */
+
+function setResearchStatus(
+  message,
+  color="yellow"
+){
+
+  const element =
+    document.getElementById(
+      "researchStatus"
+    );
+
+  element.innerHTML =
+    escapeHtml(message);
+
+  element.style.color =
+    color === "green"
+      ? "var(--green)"
+      : color === "red"
+        ? "var(--red)"
+        : "var(--yellow)";
+
+}
+
+
+function setConnection(
+  message,
+  color="green"
+){
+
+  const element =
+    document.getElementById(
+      "connectionStatus"
+    );
+
+  element.textContent =
+    message;
+
+  element.style.color =
+    `var(--${color})`;
 
 }
 
@@ -796,20 +2464,59 @@ function processProps(event) {
    FILTERS
 ========================================================= */
 
-function selectedBook() {
+function activeBetTypes(){
 
-  return document
-    .getElementById("book")
-    .value;
+  const checks =
+    document.querySelectorAll(
+      ".checks .check"
+    );
+
+  const result = [];
+
+  checks.forEach(
+    label => {
+
+      const checkbox =
+        label.querySelector(
+          "input"
+        );
+
+      if(
+        !checkbox ||
+        !checkbox.checked
+      ){
+        return;
+      }
+
+      const text =
+        label.textContent
+          .trim()
+          .toLowerCase();
+
+      if(text.includes("player"))
+        result.push("Player Prop");
+
+      else if(text.includes("spread"))
+        result.push("Spread");
+
+      else if(text.includes("moneyline"))
+        result.push("Moneyline");
+
+      else if(text.includes("total"))
+        result.push("Total");
+
+    }
+  );
+
+  return result;
 
 }
 
 
-function visibleBets() {
+function visibleBets(){
 
   const book =
     selectedBook();
-
 
   return bets.filter(
     bet =>
@@ -824,118 +2531,43 @@ function visibleBets() {
 }
 
 
-function activeBetTypes() {
-
-  const checks =
-    document.querySelectorAll(
-      ".checks .check"
-    );
-
-
-  const result = [];
-
-
-  checks.forEach(label => {
-
-    const checkbox =
-      label.querySelector(
-        "input"
-      );
-
-
-    if (
-      !checkbox ||
-      !checkbox.checked
-    ) {
-      return;
-    }
-
-
-    const text =
-      label.textContent
-        .trim()
-        .toLowerCase();
-
-
-    if (
-      text.includes("player")
-    ) {
-      result.push(
-        "Player Prop"
-      );
-    }
-
-    else if (
-      text.includes("spread")
-    ) {
-      result.push(
-        "Spread"
-      );
-    }
-
-    else if (
-      text.includes("moneyline")
-    ) {
-      result.push(
-        "Moneyline"
-      );
-    }
-
-    else if (
-      text.includes("total")
-    ) {
-      result.push(
-        "Total"
-      );
-    }
-
-  });
-
-
-  return result;
-
-}
-
-
-/* =========================================================
-   FILTER BUTTONS
-========================================================= */
-
-function renderFilters() {
+function renderFilters(){
 
   const container =
     document.getElementById(
       "filters"
     );
 
-
-  container.innerHTML = [
-
+  const types = [
     "All",
     "Player Prop",
     "Spread",
     "Total",
     "Moneyline"
+  ];
 
-  ].map(type => `
+  container.innerHTML =
+    types.map(
+      type => `
 
-    <button
-      class="${
-        active === type
-          ? "active"
-          : ""
-      }"
-      onclick="setFilter('${type}')"
-    >
-      ${type}
-    </button>
+        <button
+          class="${
+            active === type
+              ? "active"
+              : ""
+          }"
+          onclick="setFilter('${type}')"
+        >
+          ${type}
+        </button>
 
-  `).join("");
+      `
+    ).join("");
 
 }
 
 
-function setFilter(type) {
+function setFilter(type){
 
   active = type;
 
@@ -947,20 +2579,18 @@ function setFilter(type) {
 
 
 /* =========================================================
-   CANDIDATE TABLE
+   CANDIDATES
 ========================================================= */
 
-function renderBets() {
+function renderBets(){
 
   let candidates =
     visibleBets();
 
-
   const allowed =
     activeBetTypes();
 
-
-  if (allowed.length) {
+  if(allowed.length){
 
     candidates =
       candidates.filter(
@@ -972,8 +2602,7 @@ function renderBets() {
 
   }
 
-
-  if (active !== "All") {
+  if(active !== "All"){
 
     candidates =
       candidates.filter(
@@ -983,72 +2612,78 @@ function renderBets() {
 
   }
 
-
-  /*
-    Props aren't available until
-    explicitly requested.
-  */
-
   const hasProps =
     candidates.some(
-      b =>
-        b.type ===
+      bet =>
+        bet.type ===
         "Player Prop"
     );
 
-
   document.getElementById(
     "betBody"
-  ).innerHTML = `
+  ).innerHTML =
 
-    ${
-      candidates.length
-        ? candidates.map(
+    candidates.length
+
+      ? candidates
+          .map(
             renderBetRow
-          ).join("")
-        : `
-          <tr>
-            <td colspan="9">
-              <span class="muted">
-                No markets match the
-                current filters.
-              </span>
-            </td>
-          </tr>
-        `
-    }
+          )
+          .join("")
 
-    ${
-      !hasProps &&
-      allowed.includes(
-        "Player Prop"
-      )
-        ? `
-          <tr>
-            <td colspan="9">
+      : `
 
-              <button
-                class="btn primary"
-                onclick="loadProps(selectedEventId)"
-              >
-                Load Player Props
-              </button>
+        <tr>
 
-              <span
-                class="muted"
-                style="margin-left:10px"
-              >
-                Uses one event-props API request.
-              </span>
+          <td colspan="9">
 
-            </td>
-          </tr>
-        `
-        : ""
-    }
+            <span class="muted">
+              No markets match the
+              current filters.
+            </span>
 
-  `;
+          </td>
 
+        </tr>
+
+      `
+
+      +
+
+      (
+        !hasProps &&
+        allowed.includes(
+          "Player Prop"
+        )
+
+          ? `
+
+            <tr>
+
+              <td colspan="9">
+
+                <button
+                  class="btn primary"
+                  onclick="loadProps(selectedEventId)"
+                >
+                  Load Player Props
+                </button>
+
+                <span
+                  class="muted"
+                  style="margin-left:10px"
+                >
+                  Uses one event-props API request.
+                </span>
+
+              </td>
+
+            </tr>
+
+          `
+
+          : ""
+      );
 
   document.getElementById(
     "candidateCount"
@@ -1058,16 +2693,10 @@ function renderBets() {
 }
 
 
-function renderBetRow(bet) {
+function renderBetRow(bet){
 
   const impliedPct =
     bet.implied * 100;
-
-
-  /*
-    We intentionally do not invent
-    an independent probability yet.
-  */
 
   return `
 
@@ -1075,10 +2704,7 @@ function renderBetRow(bet) {
       onclick="toggle('${encodeURIComponent(bet.id)}')"
     >
 
-      <td>
-        ＋
-      </td>
-
+      <td>＋</td>
 
       <td>
 
@@ -1092,28 +2718,23 @@ function renderBetRow(bet) {
 
       </td>
 
-
       <td>
         ${escapeHtml(bet.book)}
       </td>
-
 
       <td>
         ${fmtOdds(bet.odds)}
       </td>
 
-
       <td>
         ${impliedPct.toFixed(1)}%
       </td>
 
-
       <td>
-        <span class="muted">
-          Pending
+        <span class="pill y">
+          RESEARCH PENDING
         </span>
       </td>
-
 
       <td>
         <span class="pill y">
@@ -1121,20 +2742,17 @@ function renderBetRow(bet) {
         </span>
       </td>
 
-
       <td>
         <span class="pill y">
           Pending
         </span>
       </td>
 
-
       <td>
         Live
       </td>
 
     </tr>
-
 
     <tr
       class="expand"
@@ -1144,7 +2762,6 @@ function renderBetRow(bet) {
       <td colspan="9">
 
         <div class="reason-grid">
-
 
           <div class="reason">
 
@@ -1161,6 +2778,7 @@ function renderBetRow(bet) {
               class="sub"
               style="margin-top:6px"
             >
+
               ${
                 bet.lastUpdate
                   ? "Updated " +
@@ -1169,10 +2787,10 @@ function renderBetRow(bet) {
                     ).toLocaleTimeString()
                   : ""
               }
+
             </div>
 
           </div>
-
 
           <div class="reason">
 
@@ -1192,27 +2810,25 @@ function renderBetRow(bet) {
 
           </div>
 
-
           <div class="reason">
 
             <h4>
-              Model status
+              Research status
             </h4>
 
             <span class="yellow">
-              Awaiting research model
+              Evidence collected
             </span>
 
             <div
               class="sub"
               style="margin-top:6px"
             >
-              No independent edge is
-              being claimed yet.
+              Independent probability
+              model is the next layer.
             </div>
 
           </div>
-
 
         </div>
 
@@ -1225,16 +2841,15 @@ function renderBetRow(bet) {
 }
 
 
-function toggle(encodedId) {
+function toggle(encodedId){
 
   const element =
     document.getElementById(
-      "exp" + encodedId
+      "exp"+encodedId
     );
 
-
-  if (!element) return;
-
+  if(!element)
+    return;
 
   element.style.display =
     element.style.display ===
@@ -1249,177 +2864,52 @@ function toggle(encodedId) {
    MARKET OVERVIEW
 ========================================================= */
 
-function renderMarketOverview() {
-
-  const event =
-    currentEvent();
-
-
-  const container =
-    document.querySelector(
-      ".market-grid"
-    );
-
-
-  if (!container) return;
-
-
-  if (!event) {
-
-    container.innerHTML = `
-      <div class="kv">
-        <span class="muted">
-          Game
-        </span>
-        <b>
-          No game
-        </b>
-      </div>
-
-      <div class="kv">
-        <span class="muted">
-          Market
-        </span>
-        <b>
-          —
-        </b>
-      </div>
-
-      <div class="kv">
-        <span class="muted">
-          API
-        </span>
-        <b>
-          —
-        </b>
-      </div>
-
-      <div class="kv">
-        <span class="muted">
-          Model
-        </span>
-        <b class="yellow">
-          Pending
-        </b>
-      </div>
-    `;
-
-    return;
-
-  }
-
+function renderMarketOverview(){
 
   const candidates =
     visibleBets();
 
-
   const spread =
     candidates.find(
-      b =>
-        b.type === "Spread"
+      bet =>
+        bet.type ===
+        "Spread"
     );
-
 
   const total =
     candidates.find(
-      b =>
-        b.type === "Total"
+      bet =>
+        bet.type ===
+        "Total"
     );
-
 
   const moneyline =
     candidates.find(
-      b =>
-        b.type === "Moneyline"
+      bet =>
+        bet.type ===
+        "Moneyline"
     );
 
+  document.getElementById(
+    "marketSpread"
+  ).textContent =
+    spread
+      ? `${spread.name} · ${fmtOdds(spread.odds)}`
+      : "Unavailable";
 
-  container.innerHTML = `
+  document.getElementById(
+    "marketTotal"
+  ).textContent =
+    total
+      ? `${total.name} · ${fmtOdds(total.odds)}`
+      : "Unavailable";
 
-    <div class="kv">
-
-      <span class="muted">
-        Spread
-      </span>
-
-      <b>
-        ${
-          spread
-            ? `${spread.name} · ${fmtOdds(spread.odds)}`
-            : "Unavailable"
-        }
-      </b>
-
-      <span class="sub">
-        Live market
-      </span>
-
-    </div>
-
-
-    <div class="kv">
-
-      <span class="muted">
-        Total
-      </span>
-
-      <b>
-        ${
-          total
-            ? `${total.name} · ${fmtOdds(total.odds)}`
-            : "Unavailable"
-        }
-      </b>
-
-      <span class="sub">
-        Live market
-      </span>
-
-    </div>
-
-
-    <div class="kv">
-
-      <span class="muted">
-        Moneyline
-      </span>
-
-      <b>
-        ${
-          moneyline
-            ? `${moneyline.name} · ${fmtOdds(moneyline.odds)}`
-            : "Unavailable"
-        }
-      </b>
-
-      <span class="sub">
-        Live market
-      </span>
-
-    </div>
-
-
-    <div class="kv">
-
-      <span class="muted">
-        API Credits
-      </span>
-
-      <b>
-        ${
-          quota.remaining !== null
-            ? quota.remaining
-            : "—"
-        }
-      </b>
-
-      <span class="sub">
-        remaining
-      </span>
-
-    </div>
-
-  `;
+  document.getElementById(
+    "marketMoneyline"
+  ).textContent =
+    moneyline
+      ? `${moneyline.name} · ${fmtOdds(moneyline.odds)}`
+      : "Unavailable";
 
 }
 
@@ -1428,55 +2918,62 @@ function renderMarketOverview() {
    PARLAYS
 ========================================================= */
 
-function buildParlay(legs) {
+function buildParlay(legs){
 
-  if (!legs.length) {
+  if(!legs.length)
     return null;
-  }
-
 
   const probability =
     legs.reduce(
-      (total, bet) =>
+      (total,bet) =>
         total * bet.implied,
       1
     );
 
-
-  const odds =
-    american(
-      probability
-    );
-
-
   return {
     legs,
     probability,
-    odds
+    odds:
+      american(
+        probability
+      )
   };
 
 }
 
 
-function renderParlays() {
+function renderParlays(){
 
   const candidates =
     visibleBets()
       .filter(
         bet =>
-          bet.type === "Player Prop" ||
-          bet.type === "Spread" ||
-          bet.type === "Moneyline" ||
-          bet.type === "Total"
+          [
+            "Player Prop",
+            "Spread",
+            "Moneyline",
+            "Total"
+          ].includes(
+            bet.type
+          )
       )
-      .slice(0, 8);
+      .slice(
+        0,
+        Number(
+          document.getElementById(
+            "maxlegs"
+          ).value
+        ) || 8
+      );
 
-
-  if (!candidates.length) {
-
+  const container =
     document.getElementById(
       "parlays"
-    ).innerHTML = `
+    );
+
+  if(!candidates.length){
+
+    container.innerHTML = `
 
       <div class="card parlay">
 
@@ -1501,217 +2998,305 @@ function renderParlays() {
 
   }
 
-
-  const conservative =
-    buildParlay(
-      candidates.slice(0, 2)
-    );
-
-
-  const balanced =
-    buildParlay(
-      candidates.slice(0, 3)
-    );
-
-
-  const aggressive =
-    buildParlay(
-      candidates.slice(0, 4)
-    );
-
-
   const sets = [
+
     {
-      name:
-        "2 LEG",
-      parlay:
-        conservative
+      name:"2 LEG",
+      legs:candidates.slice(0,2)
     },
+
     {
-      name:
-        "3 LEG",
-      parlay:
-        balanced
+      name:"3 LEG",
+      legs:candidates.slice(0,3)
     },
+
     {
-      name:
-        "4 LEG",
-      parlay:
-        aggressive
+      name:"4 LEG",
+      legs:candidates.slice(0,4)
     }
+
   ];
 
+  container.innerHTML =
+    sets.map(
+      set => {
 
-  document.getElementById(
-    "parlays"
-  ).innerHTML = sets.map(
-    set => {
+        const p =
+          buildParlay(
+            set.legs
+          );
 
-      const p =
-        set.parlay;
+        if(!p)
+          return "";
 
+        return `
 
-      if (!p) {
-        return "";
-      }
+          <div class="card parlay">
 
+            <div class="eyebrow">
+              ${set.name}
+            </div>
 
-      return `
+            <h3>
+              MARKET BASELINE
+            </h3>
 
-        <div class="card parlay">
+            <div class="legs">
 
-          <div class="eyebrow">
-            ${set.name}
-          </div>
+              ${p.legs.map(
+                (leg,index) => `
 
+                  <div class="leg">
 
-          <h3>
-            MARKET IMPLIED
-          </h3>
+                    <span class="num">
+                      ${index+1}
+                    </span>
 
+                    <span>
 
-          <div class="legs">
+                      ${escapeHtml(
+                        leg.name
+                      )}
 
-            ${p.legs.map(
-              (leg, index) => `
+                      <div class="sub">
 
-                <div class="leg">
-
-                  <span class="num">
-                    ${index + 1}
-                  </span>
-
-                  <span>
-
-                    ${escapeHtml(
-                      leg.name
-                    )}
-
-                    <div class="sub">
-
-                      ${
-                        fmtOdds(
+                        ${fmtOdds(
                           leg.odds
-                        )
-                      }
-                      ·
-                      ${
-                        (
-                          leg.implied *
-                          100
-                        ).toFixed(1)
-                      }%
-                      implied
+                        )}
 
-                    </div>
+                        ·
 
-                  </span>
+                        ${(
+                          leg.implied*100
+                        ).toFixed(1)}%
+                        implied
 
-                </div>
+                      </div>
 
-              `
-            ).join("")}
+                    </span>
 
-          </div>
+                  </div>
 
-
-          <div class="big">
-
-            ${
-              (
-                p.probability *
-                100
-              ).toFixed(1)
-            }%
-
-            <span class="sub">
-              combined implied probability
-            </span>
-
-          </div>
-
-
-          <div class="parlay-footer">
-
-            <div class="mini">
-
-              <small>
-                FAIR ODDS
-              </small>
-
-              <b>
-                ${fmtOdds(p.odds)}
-              </b>
+                `
+              ).join("")}
 
             </div>
 
+            <div class="big">
 
-            <div class="mini">
+              ${(
+                p.probability*100
+              ).toFixed(1)}%
 
-              <small>
-                MODEL
-              </small>
-
-              <b>
-                PENDING
-              </b>
-
-            </div>
-
-
-            <div class="mini">
-
-              <small>
-                CORRELATION
-              </small>
-
-              <b>
-                NOT MODELED
-              </b>
+              <span class="sub">
+                combined market-implied probability
+              </span>
 
             </div>
 
+            <div class="parlay-footer">
 
-            <div class="mini">
+              <div class="mini">
 
-              <small>
-                STATUS
-              </small>
+                <small>
+                  FAIR ODDS
+                </small>
 
-              <b class="yellow">
-                RESEARCH
-              </b>
+                <b>
+                  ${fmtOdds(p.odds)}
+                </b>
+
+              </div>
+
+              <div class="mini">
+
+                <small>
+                  RESEARCH
+                </small>
+
+                <b class="yellow">
+                  ACTIVE
+                </b>
+
+              </div>
+
+              <div class="mini">
+
+                <small>
+                  CORRELATION
+                </small>
+
+                <b>
+                  NOT MODELED
+                </b>
+
+              </div>
+
+              <div class="mini">
+
+                <small>
+                  STATUS
+                </small>
+
+                <b class="yellow">
+                  RESEARCH
+                </b>
+
+              </div>
 
             </div>
 
           </div>
 
-        </div>
+        `;
 
-      `;
-
-    }
-  ).join("");
+      }
+    ).join("");
 
 }
 
 
 /* =========================================================
-   FINAL STATUS
+   ALERTS
 ========================================================= */
 
-function renderFinal() {
+function renderAlerts(){
 
-  const container =
-    document.getElementById(
-      "final"
-    );
+  const data =
+    currentResearch;
+
+  const injuries =
+    data?.injuries || [];
+
+  const weather =
+    data?.weather;
+
+  let injuryStatus =
+    injuries.length
+      ? "MONITOR"
+      : "NO REPORTS";
+
+  let weatherStatus =
+    weather
+      ? "REVIEW"
+      : "UNAVAILABLE";
+
+  document.getElementById(
+    "alerts"
+  ).innerHTML = `
+
+    <div class="alert">
+
+      <div>
+        <b>
+          Injury designations
+        </b>
+
+        <div class="sub">
+          ${
+            injuries.length
+              ? `${injuries.length} relevant report(s) found.`
+              : "No current reports returned."
+          }
+        </div>
+
+      </div>
+
+      <span class="status yellow">
+        ${injuryStatus}
+      </span>
+
+    </div>
+
+    <div class="alert">
+
+      <div>
+        <b>
+          Starting lineup
+        </b>
+
+        <div class="sub">
+          Verify final starters before kickoff.
+        </div>
+
+      </div>
+
+      <span class="status yellow">
+        MONITOR
+      </span>
+
+    </div>
+
+    <div class="alert">
+
+      <div>
+        <b>
+          Weather
+        </b>
+
+        <div class="sub">
+          ${
+            weather
+              ? "Current forecast available."
+              : "Weather unavailable."
+          }
+        </div>
+
+      </div>
+
+      <span class="status yellow">
+        ${weatherStatus}
+      </span>
+
+    </div>
+
+    <div class="alert">
+
+      <div>
+        <b>
+          Market movement
+        </b>
+
+        <div class="sub">
+          Recheck the sportsbook line before placing any ticket.
+        </div>
+
+      </div>
+
+      <span class="status yellow">
+        MONITOR
+      </span>
+
+    </div>
+
+  `;
+
+}
 
 
-  container.innerHTML = `
+/* =========================================================
+   FINAL
+========================================================= */
+
+function renderFinal(){
+
+  const data =
+    currentResearch;
+
+  const newsCount =
+    data?.all_news?.length || 0;
+
+  const injuryCount =
+    data?.injuries?.length || 0;
+
+  const weatherLoaded =
+    !!data?.weather;
+
+  document.getElementById(
+    "final"
+  ).innerHTML = `
 
     <div class="grid2">
-
 
       <div>
 
@@ -1732,19 +3317,36 @@ function renderFinal() {
           </li>
 
           <li>
-            Player props:
+            Current news:
             <b>
               ${
-                propsCache[selectedEventId]
-                  ? "LOADED"
-                  : "ON DEMAND"
+                newsCount
+                  ? `${newsCount} SOURCES`
+                  : "WAITING"
               }
             </b>
           </li>
 
           <li>
-            Implied probability:
-            <b>ACTIVE</b>
+            Injury research:
+            <b>
+              ${
+                injuryCount
+                  ? `${injuryCount} REPORTS`
+                  : "WAITING"
+              }
+            </b>
+          </li>
+
+          <li>
+            Weather:
+            <b>
+              ${
+                weatherLoaded
+                  ? "CONNECTED"
+                  : "WAITING"
+              }
+            </b>
           </li>
 
           <li>
@@ -1758,7 +3360,6 @@ function renderFinal() {
 
       </div>
 
-
       <div>
 
         <div class="eyebrow">
@@ -1766,26 +3367,32 @@ function renderFinal() {
         </div>
 
         <p class="muted">
-          Market probability is calculated
-          from current sportsbook prices.
+          Current sportsbook prices provide
+          the market-implied baseline.
         </p>
 
         <p class="muted">
-          The application does not treat
-          market-implied probability as an
-          independent prediction.
+          Current news, availability and
+          weather are collected as supporting
+          research evidence.
         </p>
 
         <p class="muted">
-          Historical player/team data will
-          provide the independent probability
-          layer.
+          The application does not convert
+          news headlines into a fabricated
+          probability.
+        </p>
+
+        <p class="muted">
+          The next model layer will combine
+          historical performance, player/team
+          data and current research to produce
+          an independent estimate.
         </p>
 
       </div>
 
     </div>
-
 
     <div
       style="
@@ -1800,7 +3407,8 @@ function renderFinal() {
       </b>
 
       Live market acquisition →
-      probability research model.
+      current research →
+      independent probability model.
 
     </div>
 
@@ -1810,35 +3418,95 @@ function renderFinal() {
 
 
 /* =========================================================
-   HELPERS
+   HEADER
 ========================================================= */
 
-function escapeHtml(value) {
+function updateGameHeader(event){
 
-  return String(
-    value ?? ""
-  )
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#039;");
+  const value =
+    document.getElementById(
+      "gameHeader"
+    );
+
+  const sub =
+    document.getElementById(
+      "gameHeaderSub"
+    );
+
+  if(!event){
+
+    value.textContent =
+      "NO GAME";
+
+    sub.textContent =
+      "No event selected";
+
+    return;
+
+  }
+
+  value.textContent =
+    `${event.away_team} @ ${event.home_team}`;
+
+  sub.textContent =
+    eventDate(event);
 
 }
 
 
-function setLoading(value) {
+/* =========================================================
+   QUOTA
+========================================================= */
 
-  loading = value;
+function updateQuota(q){
 
-  const button =
-    document.querySelector(
-      ".btn.primary.full"
+  if(!q)
+    return;
+
+  quota = {
+
+    remaining:
+      q.remaining ??
+      quota.remaining,
+
+    used:
+      q.used ??
+      quota.used,
+
+    last:
+      q.last ??
+      quota.last
+
+  };
+
+  const element =
+    document.getElementById(
+      "quotaDisplay"
     );
 
+  element.textContent =
+    quota.remaining ??
+    "—";
 
-  if (!button) return;
+}
 
+
+/* =========================================================
+   LOADING
+========================================================= */
+
+function setLoading(value){
+
+  const button =
+    document.getElementById(
+      "runButton"
+    );
+
+  if(!button)
+    return;
+
+  button.disabled =
+    value;
 
   button.textContent =
     value
@@ -1848,7 +3516,7 @@ function setLoading(value) {
 }
 
 
-function showStatus(message) {
+function showStatus(message){
 
   console.warn(
     message
@@ -1857,7 +3525,11 @@ function showStatus(message) {
 }
 
 
-function clearMarkets() {
+/* =========================================================
+   CLEAR
+========================================================= */
+
+function clearMarkets(){
 
   bets = [];
 
@@ -1879,108 +3551,131 @@ function clearMarkets() {
 
   `;
 
-
   document.getElementById(
     "candidateCount"
   ).textContent =
     "0";
-
 
   document.getElementById(
     "bestEdge"
   ).textContent =
     "PENDING";
 
-
   renderParlays();
 
-  renderMarketOverview();
-
 }
 
 
-function updateGameHeader(event) {
+function clearAll(){
 
-  const metric =
-    document.querySelector(
-      ".summary .metric"
-    );
+  bets = [];
 
+  currentResearch = null;
 
-  if (!metric) return;
+  clearMarkets();
 
+  document.getElementById(
+    "injuryList"
+  ).innerHTML =
+    `<div class="research-empty">
+      No game selected.
+    </div>`;
 
-  const value =
-    metric.querySelector(
-      ".v"
-    );
+  document.getElementById(
+    "newsList"
+  ).innerHTML =
+    `<div class="research-empty">
+      No game selected.
+    </div>`;
 
-
-  const sub =
-    metric.querySelector(
-      ".s"
-    );
-
-
-  if (!event) {
-
-    value.textContent =
-      "NO GAME";
-
-    sub.textContent =
-      "No event selected";
-
-    return;
-
-  }
-
-
-  value.textContent =
-    `${event.away_team} @ ${event.home_team}`;
-
-
-  sub.textContent =
-    eventDate(event);
+  document.getElementById(
+    "researchStatus"
+  ).textContent =
+    "No game selected.";
 
 }
 
 
 /* =========================================================
-   QUOTA
+   ALLOCATION
 ========================================================= */
 
-function updateQuota(q) {
+function syncAlloc(){
 
-  if (!q) return;
+  const bankroll =
+    Number(
+      document.getElementById(
+        "bankroll"
+      ).value
+    ) || 0;
+
+  const risk =
+    Number(
+      document.getElementById(
+        "risk"
+      ).value
+    ) || 0;
+
+  const values = [
+    "a1",
+    "a2",
+    "a3"
+  ];
+
+  values.forEach(
+    id => {
+
+      const value =
+        Number(
+          document.getElementById(
+            id
+          ).value
+        ) || 0;
+
+      document.getElementById(
+        id+"v"
+      ).textContent =
+        "$"+value;
+
+    }
+  );
+
+  document.getElementById(
+    "bankDisplay"
+  ).textContent =
+    "$"+bankroll;
+
+  document.getElementById(
+    "riskDisplay"
+  ).textContent =
+    "$"+risk;
+
+}
 
 
-  quota = {
+function equalize(){
 
-    remaining:
-      q.remaining ??
-      quota.remaining,
+  ["a1","a2","a3"]
+    .forEach(
+      id => {
 
-    used:
-      q.used ??
-      quota.used,
+        document.getElementById(
+          id
+        ).value = 10;
 
-    last:
-      q.last ??
-      quota.last
+      }
+    );
 
-  };
-
-
-  renderMarketOverview();
+  syncAlloc();
 
 }
 
 
 /* =========================================================
-   RENDER EVERYTHING
+   RENDER ALL
 ========================================================= */
 
-function renderAll() {
+function renderAll(){
 
   renderFilters();
 
@@ -1996,7 +3691,7 @@ function renderAll() {
 
 
 /* =========================================================
-   CONTROL EVENTS
+   CONTROLS
 ========================================================= */
 
 document.getElementById(
@@ -2013,6 +3708,10 @@ document.getElementById(
 
     propsCache = {};
 
+    researchCache = {};
+
+    currentResearch = null;
+
     await loadEvents();
 
   }
@@ -2026,6 +3725,10 @@ document.getElementById(
   async () => {
 
     selectedEventId = null;
+
+    researchCache = {};
+
+    currentResearch = null;
 
     await loadEvents();
 
@@ -2042,19 +3745,24 @@ document.getElementById(
     selectedEventId =
       event.target.value;
 
-
     const selected =
       currentEvent();
-
 
     updateGameHeader(
       selected
     );
 
+    bets = [];
+
+    currentResearch = null;
+
+    renderAll();
 
     await loadOdds(
       selectedEventId
     );
+
+    await loadResearch();
 
   }
 );
@@ -2091,17 +3799,18 @@ document.querySelectorAll(
 
 
 document.getElementById(
+  "maxlegs"
+).addEventListener(
+  "input",
+  renderParlays
+);
+
+
+document.getElementById(
   "risk"
 ).addEventListener(
   "input",
-  event => {
-
-    document.getElementById(
-      "riskDisplay"
-    ).textContent =
-      "$" + event.target.value;
-
-  }
+  syncAlloc
 );
 
 
@@ -2109,14 +3818,7 @@ document.getElementById(
   "bankroll"
 ).addEventListener(
   "input",
-  event => {
-
-    document.getElementById(
-      "bankDisplay"
-    ).textContent =
-      "$" + event.target.value;
-
-  }
+  syncAlloc
 );
 
 
@@ -2124,35 +3826,81 @@ document.getElementById(
    RUN RESEARCH
 ========================================================= */
 
-async function runAnalysis() {
+async function runAnalysis(){
 
-  /*
-    Refresh events.
+  setLoading(true);
 
-    We do NOT automatically load props.
-    Props are deliberately on-demand so
-    one accidental page refresh doesn't
-    burn another props request.
-  */
+  try{
 
-  await loadEvents();
+    await loadEvents();
+
+  }
+  finally{
+
+    setLoading(false);
+
+  }
 
 }
 
 
 /* =========================================================
-   INITIALIZE
+   STARTUP
 ========================================================= */
 
-renderFilters();
+(function initialize(){
 
-renderFinal();
+  const date =
+    document.getElementById(
+      "date"
+    );
 
-renderParlays();
+  if(!date.value){
 
-syncAlloc();
+    date.value =
+      new Date()
+        .toISOString()
+        .slice(0,10);
 
-runAnalysis();
+  }
+
+  renderFilters();
+
+  renderFinal();
+
+  renderParlays();
+
+  syncAlloc();
+
+  setConnection(
+    "CONNECTING",
+    "yellow"
+  );
+
+  runAnalysis()
+    .then(
+      () =>
+        setConnection(
+          "LIVE",
+          "green"
+        )
+    )
+    .catch(
+      error => {
+
+        console.error(
+          error
+        );
+
+        setConnection(
+          "ERROR",
+          "red"
+        );
+
+      }
+    );
+
+})();
 
 </script>
 
