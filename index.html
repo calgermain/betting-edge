@@ -111,14 +111,26 @@ const SPORT_MAP = {
   "NCAA Basketball": "basketball_ncaab"
 };
 
+const PROP_MARKETS = [
+  "player_pass_yds",
+  "player_pass_tds",
+  "player_rush_yds",
+  "player_rush_attempts",
+  "player_reception_yds",
+  "player_receptions",
+  "player_anytime_td"
+];
+
 let events = [];
 let selectedEventId = null;
 
-let eventOddsCache = {};
+let oddsCache = {};
 let propsCache = {};
 
 let bets = [];
 let active = "All";
+
+let loading = false;
 
 let quota = {
   remaining: null,
@@ -128,35 +140,57 @@ let quota = {
 
 
 /* =========================================================
-   ODDS MATH
+   BASIC MATH
 ========================================================= */
 
-function implied(o) {
-  o = Number(o);
+function implied(odds) {
 
-  if (!Number.isFinite(o)) return 0;
+  odds = Number(odds);
 
-  return o < 0
-    ? (-o) / (-o + 100)
-    : 100 / (o + 100);
+  if (!Number.isFinite(odds)) return 0;
+
+  return odds < 0
+    ? (-odds) / (-odds + 100)
+    : 100 / (odds + 100);
+
 }
 
 
-function american(p) {
-  if (p <= 0 || p >= 1) return 0;
+function american(probability) {
 
-  return p >= 0.5
-    ? Math.round(-100 * p / (1 - p))
-    : Math.round(100 * (1 - p) / p);
+  if (
+    probability <= 0 ||
+    probability >= 1
+  ) {
+    return 0;
+  }
+
+  return probability >= 0.5
+    ? Math.round(
+        -100 * probability /
+        (1 - probability)
+      )
+    : Math.round(
+        100 * (1 - probability) /
+        probability
+      );
+
 }
 
 
-function fmtOdds(o) {
-  const n = Number(o);
+function fmtOdds(odds) {
 
-  if (!Number.isFinite(n)) return "—";
+  const value =
+    Number(odds);
 
-  return n > 0 ? "+" + n : String(n);
+  if (!Number.isFinite(value)) {
+    return "—";
+  }
+
+  return value > 0
+    ? "+" + value
+    : String(value);
+
 }
 
 
@@ -166,34 +200,46 @@ function fmtOdds(o) {
 
 async function api(path) {
 
-  const response = await fetch(API_BASE + path);
+  const response =
+    await fetch(API_BASE + path);
 
   if (!response.ok) {
+
     throw new Error(
       `API request failed: ${response.status}`
     );
+
   }
 
   return await response.json();
+
 }
 
 
 /* =========================================================
-   SPORT
+   SPORT / GAME HELPERS
 ========================================================= */
 
 function currentSport() {
+
   return SPORT_MAP[
     document.getElementById("sport").value
   ] || "americanfootball_nfl";
+
 }
 
 
-/* =========================================================
-   EVENT DISPLAY
-========================================================= */
+function currentEvent() {
 
-function eventName(event) {
+  return events.find(
+    event =>
+      event.id === selectedEventId
+  );
+
+}
+
+
+function eventLabel(event) {
 
   return `${event.away_team} @ ${event.home_team}`;
 
@@ -202,48 +248,56 @@ function eventName(event) {
 
 function eventDate(event) {
 
-  if (!event.commence_time) return "";
+  if (!event.commence_time) {
+    return "";
+  }
 
   return new Date(
     event.commence_time
-  ).toLocaleString([], {
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit"
-  });
+  ).toLocaleString(
+    [],
+    {
+      weekday: "short",
+      month: "short",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit"
+    }
+  );
 
 }
 
 
 /* =========================================================
-   LOAD EVENTS
-   THIS COSTS 0 ODDS CREDITS
+   EVENTS
 ========================================================= */
 
 async function loadEvents() {
 
-  const sport = currentSport();
+  const sport =
+    currentSport();
 
-  const gameSelect =
+  const select =
     document.getElementById("game");
 
-  gameSelect.disabled = true;
+  select.disabled = true;
 
-  gameSelect.innerHTML =
-    `<option>Loading games...</option>`;
+  select.innerHTML =
+    "<option>Loading games...</option>";
 
   try {
 
-    const payload = await api(
-      `/api/v1/events?sport=${encodeURIComponent(sport)}`
-    );
+    const payload =
+      await api(
+        `/api/v1/events?sport=${encodeURIComponent(sport)}`
+      );
 
-    events = payload.data || [];
+    events =
+      payload.data || [];
 
-    const selectedDate =
+    const chosenDate =
       document.getElementById("date").value;
+
 
     let matching =
       events.filter(event => {
@@ -252,35 +306,32 @@ async function loadEvents() {
           return false;
         }
 
-        return event.commence_time.slice(0, 10)
-          === selectedDate;
+        return event.commence_time
+          .slice(0, 10)
+          === chosenDate;
 
       });
 
-
-    /*
-      If there aren't games on the selected
-      date, show all returned upcoming games.
-    */
 
     if (!matching.length) {
       matching = events;
     }
 
 
-    gameSelect.innerHTML = "";
+    select.innerHTML = "";
 
 
     if (!matching.length) {
 
-      gameSelect.innerHTML =
-        `<option>No games available</option>`;
+      select.innerHTML =
+        "<option>No games available</option>";
 
       selectedEventId = null;
 
-      updateGameDisplay(null);
+      clearMarkets();
 
       return;
+
     }
 
 
@@ -289,12 +340,13 @@ async function loadEvents() {
       const option =
         document.createElement("option");
 
-      option.value = event.id;
+      option.value =
+        event.id;
 
       option.textContent =
-        `${eventName(event)} — ${eventDate(event)}`;
+        `${eventLabel(event)} — ${eventDate(event)}`;
 
-      gameSelect.appendChild(option);
+      select.appendChild(option);
 
     });
 
@@ -302,31 +354,30 @@ async function loadEvents() {
     selectedEventId =
       matching[0].id;
 
-    gameSelect.value =
+    select.value =
       selectedEventId;
 
-    updateGameDisplay(
+
+    updateGameHeader(
       matching[0]
     );
 
 
-    await loadEventOdds(
+    await loadOdds(
       selectedEventId
     );
 
+
   } catch (error) {
 
-    console.error(
-      "Event loading failed:",
-      error
-    );
+    console.error(error);
 
-    gameSelect.innerHTML =
-      `<option>Unable to load games</option>`;
+    select.innerHTML =
+      "<option>Unable to load games</option>";
 
   } finally {
 
-    gameSelect.disabled = false;
+    select.disabled = false;
 
   }
 
@@ -334,53 +385,48 @@ async function loadEvents() {
 
 
 /* =========================================================
-   SINGLE EVENT ODDS
+   STANDARD ODDS
 ========================================================= */
 
-async function loadEventOdds(eventId) {
+async function loadOdds(eventId) {
 
   if (!eventId) return;
 
 
-  /*
-    IMPORTANT:
-
-    If we've already loaded this event,
-    don't spend another API request.
-  */
-
-  if (eventOddsCache[eventId]) {
-
-    const cached =
-      eventOddsCache[eventId];
+  if (oddsCache[eventId]) {
 
     updateQuota(
-      cached.quota
+      oddsCache[eventId].quota
     );
 
-    processEventOdds(
-      cached.data
+    processStandardOdds(
+      oddsCache[eventId].data
     );
 
     return;
+
   }
 
 
-  const sport =
-    currentSport();
+  setLoading(true);
 
 
   try {
 
-    const payload = await api(
-      `/api/v1/events/${encodeURIComponent(eventId)}/odds` +
-      `?sport=${encodeURIComponent(sport)}` +
-      `&markets=h2h,spreads,totals` +
-      `&regions=us`
-    );
+    const sport =
+      currentSport();
 
 
-    eventOddsCache[eventId] =
+    const payload =
+      await api(
+        `/api/v1/events/${encodeURIComponent(eventId)}/odds` +
+        `?sport=${encodeURIComponent(sport)}` +
+        `&markets=h2h,spreads,totals` +
+        `&regions=us`
+      );
+
+
+    oddsCache[eventId] =
       payload;
 
 
@@ -389,7 +435,7 @@ async function loadEventOdds(eventId) {
     );
 
 
-    processEventOdds(
+    processStandardOdds(
       payload.data
     );
 
@@ -397,15 +443,15 @@ async function loadEventOdds(eventId) {
   } catch (error) {
 
     console.error(
-      "Event odds loading failed:",
+      "Odds error:",
       error
     );
 
-    bets = [];
+    clearMarkets();
 
-    renderBets();
+  } finally {
 
-    updateMarketOverview(null);
+    setLoading(false);
 
   }
 
@@ -413,40 +459,107 @@ async function loadEventOdds(eventId) {
 
 
 /* =========================================================
-   PROCESS EVENT ODDS
+   PROPS
 ========================================================= */
 
-function processEventOdds(event) {
+async function loadProps(eventId) {
 
-  if (!event) {
+  if (!eventId) return;
 
-    bets = [];
 
-    renderBets();
+  if (propsCache[eventId]) {
 
-    updateMarketOverview(null);
+    updateQuota(
+      propsCache[eventId].quota
+    );
+
+    processProps(
+      propsCache[eventId].data
+    );
 
     return;
+
   }
 
 
-  const selectedBook =
-    document.getElementById("book").value;
+  setLoading(true);
+
+
+  try {
+
+    const sport =
+      currentSport();
+
+
+    const markets =
+      PROP_MARKETS.join(",");
+
+
+    const payload =
+      await api(
+        `/api/v1/events/${encodeURIComponent(eventId)}/props` +
+        `?sport=${encodeURIComponent(sport)}` +
+        `&markets=${encodeURIComponent(markets)}` +
+        `&regions=us`
+      );
+
+
+    propsCache[eventId] =
+      payload;
+
+
+    updateQuota(
+      payload.quota
+    );
+
+
+    processProps(
+      payload.data
+    );
+
+
+  } catch (error) {
+
+    console.error(
+      "Props error:",
+      error
+    );
+
+    showStatus(
+      "Player props could not be loaded."
+    );
+
+  } finally {
+
+    setLoading(false);
+
+  }
+
+}
+
+
+/* =========================================================
+   STANDARD MARKET NORMALIZATION
+========================================================= */
+
+function processStandardOdds(event) {
+
+  if (!event) {
+
+    clearMarkets();
+
+    return;
+
+  }
 
 
   const result = [];
 
 
   (event.bookmakers || [])
-    .forEach(bookmaker => {
+    .forEach(book => {
 
-      /*
-        Don't filter here if bookmaker names
-        differ slightly. We collect everything
-        and filter at display time.
-      */
-
-      (bookmaker.markets || [])
+      (book.markets || [])
         .forEach(market => {
 
           if (
@@ -463,32 +576,6 @@ function processEventOdds(event) {
           (market.outcomes || [])
             .forEach(outcome => {
 
-              let name =
-                outcome.name || "Unknown";
-
-
-              if (
-                market.key === "spreads" &&
-                outcome.point !== undefined
-              ) {
-
-                name +=
-                  ` ${outcome.point > 0 ? "+" : ""}${outcome.point}`;
-
-              }
-
-
-              if (
-                market.key === "totals" &&
-                outcome.point !== undefined
-              ) {
-
-                name +=
-                  ` ${outcome.point}`;
-
-              }
-
-
               let type =
                 "Moneyline";
 
@@ -496,38 +583,44 @@ function processEventOdds(event) {
               if (
                 market.key === "spreads"
               ) {
-
-                type =
-                  "Spread";
-
+                type = "Spread";
               }
 
 
               if (
                 market.key === "totals"
               ) {
+                type = "Total";
+              }
 
-                type =
-                  "Total";
+
+              let displayName =
+                outcome.name;
+
+
+              if (
+                outcome.point !== undefined &&
+                outcome.point !== null
+              ) {
+
+                displayName +=
+                  ` ${outcome.point > 0 ? "+" : ""}${outcome.point}`;
 
               }
 
 
               result.push({
 
-                id:
-                  [
-                    event.id,
-                    bookmaker.key,
-                    market.key,
-                    outcome.name,
-                    outcome.point
-                  ].join("-"),
-
-                eventId:
+                id: [
                   event.id,
+                  book.key,
+                  market.key,
+                  outcome.name,
+                  outcome.point
+                ].join("|"),
 
-                name,
+                name:
+                  displayName,
 
                 rawName:
                   outcome.name,
@@ -540,31 +633,23 @@ function processEventOdds(event) {
                 odds:
                   Number(outcome.price),
 
-                implied:
-                  implied(outcome.price),
-
                 point:
                   outcome.point,
+
+                book:
+                  book.title,
+
+                bookmakerKey:
+                  book.key,
+
+                implied:
+                  implied(outcome.price),
 
                 description:
                   outcome.description,
 
-                book:
-                  bookmaker.title,
-
-                bookmakerKey:
-                  bookmaker.key,
-
                 lastUpdate:
-                  market.last_update,
-
-                est: null,
-
-                conf:
-                  "Pending",
-
-                risk:
-                  "Unrated"
+                  market.last_update
 
               });
 
@@ -577,258 +662,132 @@ function processEventOdds(event) {
 
   bets = result;
 
-
-  updateMarketOverview(
-    event
-  );
-
-
-  renderBets();
-
-
-  document.getElementById(
-    "candidateCount"
-  ).textContent =
-    bets.length;
-
-
-  document.getElementById(
-    "bestEdge"
-  ).textContent =
-    "MODEL PENDING";
-
-
-  renderParlays();
-
-  renderFinal();
+  renderAll();
 
 }
 
 
 /* =========================================================
-   BOOK FILTER
+   PROP NORMALIZATION
 ========================================================= */
 
-function visibleBets() {
+function processProps(event) {
 
-  const selectedBook =
-    document.getElementById("book").value;
+  if (!event) return;
 
 
-  return bets.filter(b => {
+  const props = [];
 
-    if (!selectedBook) {
-      return true;
-    }
 
+  (event.bookmakers || [])
+    .forEach(book => {
 
-    return (
-      b.book &&
-      b.book.toLowerCase()
-        .includes(
-          selectedBook.toLowerCase()
-        )
-    );
+      (book.markets || [])
+        .forEach(market => {
 
-  });
+          if (
+            !PROP_MARKETS.includes(
+              market.key
+            )
+          ) {
+            return;
+          }
 
-}
 
+          (market.outcomes || [])
+            .forEach(outcome => {
 
-/* =========================================================
-   GAME DISPLAY
-========================================================= */
+              let type =
+                "Player Prop";
 
-function updateGameDisplay(event) {
 
-  const metric =
-    document.querySelector(
-      ".summary .metric:first-child"
-    );
+              const direction =
+                outcome.name || "";
 
 
-  if (!event) {
+              let label =
+                outcome.description ||
+                outcome.name ||
+                market.key;
 
-    metric.querySelector(
-      ".v"
-    ).textContent =
-      "NO GAME";
 
-    metric.querySelector(
-      ".s"
-    ).textContent =
-      "No event available";
+              if (
+                outcome.point !== undefined &&
+                outcome.point !== null
+              ) {
 
-    return;
-  }
+                label +=
+                  ` ${outcome.point > 0 ? "+" : ""}${outcome.point}`;
 
+              }
 
-  metric.querySelector(
-    ".v"
-  ).textContent =
-    `${event.away_team} @ ${event.home_team}`;
 
+              props.push({
 
-  metric.querySelector(
-    ".s"
-  ).textContent =
-    eventDate(event);
+                id: [
+                  event.id,
+                  book.key,
+                  market.key,
+                  outcome.name,
+                  outcome.point,
+                  outcome.description
+                ].join("|"),
 
-}
+                name:
+                  label,
 
+                rawName:
+                  direction,
 
-/* =========================================================
-   MARKET OVERVIEW
-========================================================= */
+                type,
 
-function updateMarketOverview(event) {
+                marketKey:
+                  market.key,
 
-  const container =
-    document.querySelector(
-      ".section .market-grid"
-    );
+                odds:
+                  Number(outcome.price),
 
+                point:
+                  outcome.point,
 
-  if (!container) return;
+                book:
+                  book.title,
 
+                bookmakerKey:
+                  book.key,
 
-  if (!event) {
+                implied:
+                  implied(outcome.price),
 
-    container.innerHTML = `
-      <div class="kv">
-        <span class="muted">Market</span>
-        <b>No market data</b>
-      </div>
+                description:
+                  outcome.description,
 
-      <div class="kv">
-        <span class="muted">Status</span>
-        <b class="yellow">Waiting</b>
-      </div>
+                lastUpdate:
+                  market.last_update
 
-      <div class="kv">
-        <span class="muted">Source</span>
-        <b>The Odds API</b>
-      </div>
+              });
 
-      <div class="kv">
-        <span class="muted">Model</span>
-        <b class="yellow">Pending</b>
-      </div>
-    `;
+            });
 
-    return;
+        });
 
-  }
+    });
 
 
-  const visible =
-    visibleBets();
+  /*
+    Keep standard markets and add props.
+  */
 
+  bets = [
+    ...bets.filter(
+      b =>
+        b.type !== "Player Prop"
+    ),
+    ...props
+  ];
 
-  const spread =
-    visible.find(
-      b => b.type === "Spread"
-    );
 
-
-  const total =
-    visible.find(
-      b => b.type === "Total"
-    );
-
-
-  const moneyline =
-    visible.find(
-      b => b.type === "Moneyline"
-    );
-
-
-  function marketText(b) {
-
-    if (!b) {
-      return "Unavailable";
-    }
-
-
-    return `${b.name} · ${fmtOdds(b.odds)}`;
-
-  }
-
-
-  container.innerHTML = `
-
-    <div class="kv">
-
-      <span class="muted">
-        Spread
-      </span>
-
-      <b>
-        ${marketText(spread)}
-      </b>
-
-      <span class="sub">
-        Live sportsbook
-      </span>
-
-    </div>
-
-
-    <div class="kv">
-
-      <span class="muted">
-        Total
-      </span>
-
-      <b>
-        ${marketText(total)}
-      </b>
-
-      <span class="sub">
-        Live sportsbook
-      </span>
-
-    </div>
-
-
-    <div class="kv">
-
-      <span class="muted">
-        Moneyline
-      </span>
-
-      <b>
-        ${marketText(moneyline)}
-      </b>
-
-      <span class="sub">
-        Live sportsbook
-      </span>
-
-    </div>
-
-
-    <div class="kv">
-
-      <span class="muted">
-        API Credits
-      </span>
-
-      <b>
-        ${
-          quota.remaining !== null
-            ? quota.remaining
-            : "—"
-        }
-      </b>
-
-      <span class="sub">
-        remaining
-      </span>
-
-    </div>
-
-  `;
+  renderAll();
 
 }
 
@@ -837,11 +796,120 @@ function updateMarketOverview(event) {
    FILTERS
 ========================================================= */
 
+function selectedBook() {
+
+  return document
+    .getElementById("book")
+    .value;
+
+}
+
+
+function visibleBets() {
+
+  const book =
+    selectedBook();
+
+
+  return bets.filter(
+    bet =>
+      !book ||
+      bet.book
+        .toLowerCase()
+        .includes(
+          book.toLowerCase()
+        )
+  );
+
+}
+
+
+function activeBetTypes() {
+
+  const checks =
+    document.querySelectorAll(
+      ".checks .check"
+    );
+
+
+  const result = [];
+
+
+  checks.forEach(label => {
+
+    const checkbox =
+      label.querySelector(
+        "input"
+      );
+
+
+    if (
+      !checkbox ||
+      !checkbox.checked
+    ) {
+      return;
+    }
+
+
+    const text =
+      label.textContent
+        .trim()
+        .toLowerCase();
+
+
+    if (
+      text.includes("player")
+    ) {
+      result.push(
+        "Player Prop"
+      );
+    }
+
+    else if (
+      text.includes("spread")
+    ) {
+      result.push(
+        "Spread"
+      );
+    }
+
+    else if (
+      text.includes("moneyline")
+    ) {
+      result.push(
+        "Moneyline"
+      );
+    }
+
+    else if (
+      text.includes("total")
+    ) {
+      result.push(
+        "Total"
+      );
+    }
+
+  });
+
+
+  return result;
+
+}
+
+
+/* =========================================================
+   FILTER BUTTONS
+========================================================= */
+
 function renderFilters() {
 
-  document.getElementById(
-    "filters"
-  ).innerHTML = [
+  const container =
+    document.getElementById(
+      "filters"
+    );
+
+
+  container.innerHTML = [
 
     "All",
     "Player Prop",
@@ -879,225 +947,289 @@ function setFilter(type) {
 
 
 /* =========================================================
-   BET TABLE
+   CANDIDATE TABLE
 ========================================================= */
 
 function renderBets() {
 
-  let arr =
+  let candidates =
     visibleBets();
 
 
-  if (active !== "All") {
+  const allowed =
+    activeBetTypes();
 
-    arr =
-      arr.filter(
-        b => b.type === active
+
+  if (allowed.length) {
+
+    candidates =
+      candidates.filter(
+        bet =>
+          allowed.includes(
+            bet.type
+          )
       );
 
   }
 
 
-  if (!arr.length) {
+  if (active !== "All") {
 
-    document.getElementById(
-      "betBody"
-    ).innerHTML = `
-
-      <tr>
-
-        <td colspan="9">
-
-          <span class="muted">
-            No markets available.
-          </span>
-
-        </td>
-
-      </tr>
-
-    `;
-
-    return;
+    candidates =
+      candidates.filter(
+        bet =>
+          bet.type === active
+      );
 
   }
 
 
+  /*
+    Props aren't available until
+    explicitly requested.
+  */
+
+  const hasProps =
+    candidates.some(
+      b =>
+        b.type ===
+        "Player Prop"
+    );
+
+
   document.getElementById(
     "betBody"
-  ).innerHTML =
+  ).innerHTML = `
 
-    arr.map(b => `
+    ${
+      candidates.length
+        ? candidates.map(
+            renderBetRow
+          ).join("")
+        : `
+          <tr>
+            <td colspan="9">
+              <span class="muted">
+                No markets match the
+                current filters.
+              </span>
+            </td>
+          </tr>
+        `
+    }
 
-      <tr
-        onclick="toggle('${encodeURIComponent(b.id)}')"
-      >
+    ${
+      !hasProps &&
+      allowed.includes(
+        "Player Prop"
+      )
+        ? `
+          <tr>
+            <td colspan="9">
 
-        <td>
-          ＋
-        </td>
-
-
-        <td>
-
-          <div class="betname">
-            ${b.name}
-          </div>
-
-          <div class="sub">
-            ${b.type}
-          </div>
-
-        </td>
-
-
-        <td>
-          ${b.book}
-        </td>
-
-
-        <td>
-          ${fmtOdds(b.odds)}
-        </td>
-
-
-        <td>
-          ${(b.implied * 100).toFixed(1)}%
-        </td>
-
-
-        <td>
-
-          <span class="muted">
-            Pending model
-          </span>
-
-        </td>
-
-
-        <td>
-
-          <span class="pill y">
-            Pending
-          </span>
-
-        </td>
-
-
-        <td>
-
-          <span class="pill y">
-            Unrated
-          </span>
-
-        </td>
-
-
-        <td>
-          Live
-        </td>
-
-      </tr>
-
-
-      <tr
-        class="expand"
-        id="exp${encodeURIComponent(b.id)}"
-      >
-
-        <td colspan="9">
-
-          <div class="reason-grid">
-
-
-            <div class="reason">
-
-              <h4>
-                Market
-              </h4>
-
-              Live sportsbook market.
-
-              <div
-                class="sub"
-                style="margin-top:6px"
+              <button
+                class="btn primary"
+                onclick="loadProps(selectedEventId)"
               >
-                ${
-                  b.lastUpdate
-                    ? "Updated " +
-                      new Date(
-                        b.lastUpdate
-                      ).toLocaleTimeString()
-                    : ""
-                }
-              </div>
+                Load Player Props
+              </button>
 
+              <span
+                class="muted"
+                style="margin-left:10px"
+              >
+                Uses one event-props API request.
+              </span>
+
+            </td>
+          </tr>
+        `
+        : ""
+    }
+
+  `;
+
+
+  document.getElementById(
+    "candidateCount"
+  ).textContent =
+    candidates.length;
+
+}
+
+
+function renderBetRow(bet) {
+
+  const impliedPct =
+    bet.implied * 100;
+
+
+  /*
+    We intentionally do not invent
+    an independent probability yet.
+  */
+
+  return `
+
+    <tr
+      onclick="toggle('${encodeURIComponent(bet.id)}')"
+    >
+
+      <td>
+        ＋
+      </td>
+
+
+      <td>
+
+        <div class="betname">
+          ${escapeHtml(bet.name)}
+        </div>
+
+        <div class="sub">
+          ${escapeHtml(bet.type)}
+        </div>
+
+      </td>
+
+
+      <td>
+        ${escapeHtml(bet.book)}
+      </td>
+
+
+      <td>
+        ${fmtOdds(bet.odds)}
+      </td>
+
+
+      <td>
+        ${impliedPct.toFixed(1)}%
+      </td>
+
+
+      <td>
+        <span class="muted">
+          Pending
+        </span>
+      </td>
+
+
+      <td>
+        <span class="pill y">
+          MODEL PENDING
+        </span>
+      </td>
+
+
+      <td>
+        <span class="pill y">
+          Pending
+        </span>
+      </td>
+
+
+      <td>
+        Live
+      </td>
+
+    </tr>
+
+
+    <tr
+      class="expand"
+      id="exp${encodeURIComponent(bet.id)}"
+    >
+
+      <td colspan="9">
+
+        <div class="reason-grid">
+
+
+          <div class="reason">
+
+            <h4>
+              Market
+            </h4>
+
+            ${escapeHtml(
+              bet.description ||
+              bet.name
+            )}
+
+            <div
+              class="sub"
+              style="margin-top:6px"
+            >
+              ${
+                bet.lastUpdate
+                  ? "Updated " +
+                    new Date(
+                      bet.lastUpdate
+                    ).toLocaleTimeString()
+                  : ""
+              }
             </div>
 
+          </div>
 
-            <div class="reason">
 
-              <h4>
-                Implied probability
-              </h4>
+          <div class="reason">
 
-              ${(b.implied * 100).toFixed(2)}%
+            <h4>
+              Implied probability
+            </h4>
 
-              <div
-                class="sub"
-                style="margin-top:6px"
-              >
-                Calculated directly from
-                sportsbook odds.
-              </div>
+            ${impliedPct.toFixed(2)}%
 
+            <div
+              class="sub"
+              style="margin-top:6px"
+            >
+              Derived directly from
+              sportsbook price.
             </div>
-
-
-            <div class="reason">
-
-              <h4>
-                Model status
-              </h4>
-
-              No independent probability
-              estimate yet.
-
-              <div
-                class="sub"
-                style="margin-top:6px"
-              >
-                Edge will not be claimed until
-                the research model is connected.
-              </div>
-
-            </div>
-
 
           </div>
 
-        </td>
 
-      </tr>
+          <div class="reason">
 
-    `).join("");
+            <h4>
+              Model status
+            </h4>
+
+            <span class="yellow">
+              Awaiting research model
+            </span>
+
+            <div
+              class="sub"
+              style="margin-top:6px"
+            >
+              No independent edge is
+              being claimed yet.
+            </div>
+
+          </div>
+
+
+        </div>
+
+      </td>
+
+    </tr>
+
+  `;
 
 }
 
 
 function toggle(encodedId) {
 
-  const id =
-    decodeURIComponent(encodedId);
-
-
-  const encoded =
-    encodeURIComponent(id);
-
-
   const element =
     document.getElementById(
-      "exp" + encoded
+      "exp" + encodedId
     );
 
 
@@ -1105,7 +1237,8 @@ function toggle(encodedId) {
 
 
   element.style.display =
-    element.style.display === "table-row"
+    element.style.display ===
+    "table-row"
       ? "none"
       : "table-row";
 
@@ -1113,153 +1246,176 @@ function toggle(encodedId) {
 
 
 /* =========================================================
-   PARLAY PLACEHOLDER
+   MARKET OVERVIEW
 ========================================================= */
 
-function renderParlays() {
+function renderMarketOverview() {
 
-  document.getElementById(
-    "parlays"
-  ).innerHTML = `
-
-    <div class="card parlay">
-
-      <div class="eyebrow">
-        Construction
-      </div>
+  const event =
+    currentEvent();
 
 
-      <h3>
-        MODEL PENDING
-      </h3>
+  const container =
+    document.querySelector(
+      ".market-grid"
+    );
 
 
-      <div class="legs">
-
-        <div class="leg">
-
-          <span class="num">
-            1
-          </span>
-
-          <span>
-
-            Live market data loaded
-
-            <div class="sub">
-              ${bets.length} markets available
-            </div>
-
-          </span>
-
-        </div>
+  if (!container) return;
 
 
-        <div class="leg">
+  if (!event) {
 
-          <span class="num">
-            2
-          </span>
-
-          <span>
-
-            Implied probabilities calculated
-
-            <div class="sub">
-              Based on current sportsbook prices
-            </div>
-
-          </span>
-
-        </div>
-
-
-        <div class="leg">
-
-          <span class="num">
-            3
-          </span>
-
-          <span>
-
-            Independent probability model
-
-            <div class="sub">
-              Coming next
-            </div>
-
-          </span>
-
-        </div>
-
-      </div>
-
-
-      <div class="big">
-
-        —
-
-        <span class="sub">
-          estimated probability
+    container.innerHTML = `
+      <div class="kv">
+        <span class="muted">
+          Game
         </span>
-
+        <b>
+          No game
+        </b>
       </div>
 
-
-      <div class="parlay-footer">
-
-        <div class="mini">
-
-          <small>
-            MARKET
-          </small>
-
-          <b>
-            LIVE
-          </b>
-
-        </div>
-
-
-        <div class="mini">
-
-          <small>
-            MODEL
-          </small>
-
-          <b>
-            PENDING
-          </b>
-
-        </div>
-
-
-        <div class="mini">
-
-          <small>
-            EDGE
-          </small>
-
-          <b>
-            PENDING
-          </b>
-
-        </div>
-
-
-        <div class="mini">
-
-          <small>
-            STATUS
-          </small>
-
-          <b class="yellow">
-            RESEARCH
-          </b>
-
-        </div>
-
+      <div class="kv">
+        <span class="muted">
+          Market
+        </span>
+        <b>
+          —
+        </b>
       </div>
+
+      <div class="kv">
+        <span class="muted">
+          API
+        </span>
+        <b>
+          —
+        </b>
+      </div>
+
+      <div class="kv">
+        <span class="muted">
+          Model
+        </span>
+        <b class="yellow">
+          Pending
+        </b>
+      </div>
+    `;
+
+    return;
+
+  }
+
+
+  const candidates =
+    visibleBets();
+
+
+  const spread =
+    candidates.find(
+      b =>
+        b.type === "Spread"
+    );
+
+
+  const total =
+    candidates.find(
+      b =>
+        b.type === "Total"
+    );
+
+
+  const moneyline =
+    candidates.find(
+      b =>
+        b.type === "Moneyline"
+    );
+
+
+  container.innerHTML = `
+
+    <div class="kv">
+
+      <span class="muted">
+        Spread
+      </span>
+
+      <b>
+        ${
+          spread
+            ? `${spread.name} · ${fmtOdds(spread.odds)}`
+            : "Unavailable"
+        }
+      </b>
+
+      <span class="sub">
+        Live market
+      </span>
+
+    </div>
+
+
+    <div class="kv">
+
+      <span class="muted">
+        Total
+      </span>
+
+      <b>
+        ${
+          total
+            ? `${total.name} · ${fmtOdds(total.odds)}`
+            : "Unavailable"
+        }
+      </b>
+
+      <span class="sub">
+        Live market
+      </span>
+
+    </div>
+
+
+    <div class="kv">
+
+      <span class="muted">
+        Moneyline
+      </span>
+
+      <b>
+        ${
+          moneyline
+            ? `${moneyline.name} · ${fmtOdds(moneyline.odds)}`
+            : "Unavailable"
+        }
+      </b>
+
+      <span class="sub">
+        Live market
+      </span>
+
+    </div>
+
+
+    <div class="kv">
+
+      <span class="muted">
+        API Credits
+      </span>
+
+      <b>
+        ${
+          quota.remaining !== null
+            ? quota.remaining
+            : "—"
+        }
+      </b>
+
+      <span class="sub">
+        remaining
+      </span>
 
     </div>
 
@@ -1269,14 +1425,290 @@ function renderParlays() {
 
 
 /* =========================================================
-   FINAL RESEARCH STATUS
+   PARLAYS
+========================================================= */
+
+function buildParlay(legs) {
+
+  if (!legs.length) {
+    return null;
+  }
+
+
+  const probability =
+    legs.reduce(
+      (total, bet) =>
+        total * bet.implied,
+      1
+    );
+
+
+  const odds =
+    american(
+      probability
+    );
+
+
+  return {
+    legs,
+    probability,
+    odds
+  };
+
+}
+
+
+function renderParlays() {
+
+  const candidates =
+    visibleBets()
+      .filter(
+        bet =>
+          bet.type === "Player Prop" ||
+          bet.type === "Spread" ||
+          bet.type === "Moneyline" ||
+          bet.type === "Total"
+      )
+      .slice(0, 8);
+
+
+  if (!candidates.length) {
+
+    document.getElementById(
+      "parlays"
+    ).innerHTML = `
+
+      <div class="card parlay">
+
+        <div class="eyebrow">
+          Parlay Builder
+        </div>
+
+        <h3>
+          Waiting for markets
+        </h3>
+
+        <p class="muted">
+          Load a game to begin building
+          combinations.
+        </p>
+
+      </div>
+
+    `;
+
+    return;
+
+  }
+
+
+  const conservative =
+    buildParlay(
+      candidates.slice(0, 2)
+    );
+
+
+  const balanced =
+    buildParlay(
+      candidates.slice(0, 3)
+    );
+
+
+  const aggressive =
+    buildParlay(
+      candidates.slice(0, 4)
+    );
+
+
+  const sets = [
+    {
+      name:
+        "2 LEG",
+      parlay:
+        conservative
+    },
+    {
+      name:
+        "3 LEG",
+      parlay:
+        balanced
+    },
+    {
+      name:
+        "4 LEG",
+      parlay:
+        aggressive
+    }
+  ];
+
+
+  document.getElementById(
+    "parlays"
+  ).innerHTML = sets.map(
+    set => {
+
+      const p =
+        set.parlay;
+
+
+      if (!p) {
+        return "";
+      }
+
+
+      return `
+
+        <div class="card parlay">
+
+          <div class="eyebrow">
+            ${set.name}
+          </div>
+
+
+          <h3>
+            MARKET IMPLIED
+          </h3>
+
+
+          <div class="legs">
+
+            ${p.legs.map(
+              (leg, index) => `
+
+                <div class="leg">
+
+                  <span class="num">
+                    ${index + 1}
+                  </span>
+
+                  <span>
+
+                    ${escapeHtml(
+                      leg.name
+                    )}
+
+                    <div class="sub">
+
+                      ${
+                        fmtOdds(
+                          leg.odds
+                        )
+                      }
+                      ·
+                      ${
+                        (
+                          leg.implied *
+                          100
+                        ).toFixed(1)
+                      }%
+                      implied
+
+                    </div>
+
+                  </span>
+
+                </div>
+
+              `
+            ).join("")}
+
+          </div>
+
+
+          <div class="big">
+
+            ${
+              (
+                p.probability *
+                100
+              ).toFixed(1)
+            }%
+
+            <span class="sub">
+              combined implied probability
+            </span>
+
+          </div>
+
+
+          <div class="parlay-footer">
+
+            <div class="mini">
+
+              <small>
+                FAIR ODDS
+              </small>
+
+              <b>
+                ${fmtOdds(p.odds)}
+              </b>
+
+            </div>
+
+
+            <div class="mini">
+
+              <small>
+                MODEL
+              </small>
+
+              <b>
+                PENDING
+              </b>
+
+            </div>
+
+
+            <div class="mini">
+
+              <small>
+                CORRELATION
+              </small>
+
+              <b>
+                NOT MODELED
+              </b>
+
+            </div>
+
+
+            <div class="mini">
+
+              <small>
+                STATUS
+              </small>
+
+              <b class="yellow">
+                RESEARCH
+              </b>
+
+            </div>
+
+          </div>
+
+        </div>
+
+      `;
+
+    }
+  ).join("");
+
+}
+
+
+/* =========================================================
+   FINAL STATUS
 ========================================================= */
 
 function renderFinal() {
 
-  document.getElementById(
-    "final"
-  ).innerHTML = `
+  const container =
+    document.getElementById(
+      "final"
+    );
+
+
+  container.innerHTML = `
 
     <div class="grid2">
 
@@ -1284,35 +1716,42 @@ function renderFinal() {
       <div>
 
         <div class="eyebrow">
-          Live data status
+          System status
         </div>
-
 
         <ul>
 
           <li>
-            <b>Events:</b>
-            connected
+            Live events:
+            <b>CONNECTED</b>
           </li>
 
           <li>
-            <b>Game odds:</b>
-            connected
+            Live sportsbook odds:
+            <b>CONNECTED</b>
           </li>
 
           <li>
-            <b>Implied probability:</b>
-            calculated
+            Player props:
+            <b>
+              ${
+                propsCache[selectedEventId]
+                  ? "LOADED"
+                  : "ON DEMAND"
+              }
+            </b>
           </li>
 
           <li>
-            <b>Independent probability:</b>
-            pending
+            Implied probability:
+            <b>ACTIVE</b>
           </li>
 
           <li>
-            <b>Player props:</b>
-            next
+            Independent probability:
+            <b class="yellow">
+              NEXT MODEL LAYER
+            </b>
           </li>
 
         </ul>
@@ -1326,26 +1765,24 @@ function renderFinal() {
           Methodology
         </div>
 
-
         <p class="muted">
-          Current market prices are live
-          sportsbook data.
+          Market probability is calculated
+          from current sportsbook prices.
         </p>
 
-
         <p class="muted">
-          Implied probability is derived from
-          those prices.
+          The application does not treat
+          market-implied probability as an
+          independent prediction.
         </p>
 
-
         <p class="muted">
-          No independent edge is claimed until
-          the probability model is connected.
+          Historical player/team data will
+          provide the independent probability
+          layer.
         </p>
 
       </div>
-
 
     </div>
 
@@ -1359,16 +1796,151 @@ function renderFinal() {
     >
 
       <b class="yellow">
-        Research status:
+        Current stage:
       </b>
 
-      Live market acquisition is working.
-      Independent probability modeling is
-      the next layer.
+      Live market acquisition →
+      probability research model.
 
     </div>
 
   `;
+
+}
+
+
+/* =========================================================
+   HELPERS
+========================================================= */
+
+function escapeHtml(value) {
+
+  return String(
+    value ?? ""
+  )
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+
+}
+
+
+function setLoading(value) {
+
+  loading = value;
+
+  const button =
+    document.querySelector(
+      ".btn.primary.full"
+    );
+
+
+  if (!button) return;
+
+
+  button.textContent =
+    value
+      ? "Loading..."
+      : "↻ Run Research";
+
+}
+
+
+function showStatus(message) {
+
+  console.warn(
+    message
+  );
+
+}
+
+
+function clearMarkets() {
+
+  bets = [];
+
+  document.getElementById(
+    "betBody"
+  ).innerHTML = `
+
+    <tr>
+
+      <td colspan="9">
+
+        <span class="muted">
+          No market data loaded.
+        </span>
+
+      </td>
+
+    </tr>
+
+  `;
+
+
+  document.getElementById(
+    "candidateCount"
+  ).textContent =
+    "0";
+
+
+  document.getElementById(
+    "bestEdge"
+  ).textContent =
+    "PENDING";
+
+
+  renderParlays();
+
+  renderMarketOverview();
+
+}
+
+
+function updateGameHeader(event) {
+
+  const metric =
+    document.querySelector(
+      ".summary .metric"
+    );
+
+
+  if (!metric) return;
+
+
+  const value =
+    metric.querySelector(
+      ".v"
+    );
+
+
+  const sub =
+    metric.querySelector(
+      ".s"
+    );
+
+
+  if (!event) {
+
+    value.textContent =
+      "NO GAME";
+
+    sub.textContent =
+      "No event selected";
+
+    return;
+
+  }
+
+
+  value.textContent =
+    `${event.away_team} @ ${event.home_team}`;
+
+
+  sub.textContent =
+    eventDate(event);
 
 }
 
@@ -1383,44 +1955,48 @@ function updateQuota(q) {
 
 
   quota = {
+
     remaining:
-      q.remaining ?? quota.remaining,
+      q.remaining ??
+      quota.remaining,
 
     used:
-      q.used ?? quota.used,
+      q.used ??
+      quota.used,
 
     last:
-      q.last ?? quota.last
+      q.last ??
+      quota.last
+
   };
 
 
-  updateQuotaDisplay();
-
-}
-
-
-function updateQuotaDisplay() {
-
-  const elements =
-    document.querySelectorAll(
-      ".api-quota-display"
-    );
-
-
-  elements.forEach(element => {
-
-    element.textContent =
-      quota.remaining !== null
-        ? `${quota.remaining} credits remaining`
-        : "Credits unavailable";
-
-  });
+  renderMarketOverview();
 
 }
 
 
 /* =========================================================
-   CONTROLS
+   RENDER EVERYTHING
+========================================================= */
+
+function renderAll() {
+
+  renderFilters();
+
+  renderBets();
+
+  renderMarketOverview();
+
+  renderParlays();
+
+  renderFinal();
+
+}
+
+
+/* =========================================================
+   CONTROL EVENTS
 ========================================================= */
 
 document.getElementById(
@@ -1429,18 +2005,13 @@ document.getElementById(
   "change",
   async () => {
 
-    /*
-      Changing sport creates a completely
-      different event cache.
-    */
-
     events = [];
 
-    eventOddsCache = {};
+    selectedEventId = null;
+
+    oddsCache = {};
 
     propsCache = {};
-
-    selectedEventId = null;
 
     await loadEvents();
 
@@ -1454,6 +2025,8 @@ document.getElementById(
   "change",
   async () => {
 
+    selectedEventId = null;
+
     await loadEvents();
 
   }
@@ -1464,27 +2037,22 @@ document.getElementById(
   "game"
 ).addEventListener(
   "change",
-  async () => {
+  async event => {
 
     selectedEventId =
-      document.getElementById(
-        "game"
-      ).value;
+      event.target.value;
 
 
-    const event =
-      events.find(
-        e =>
-          e.id === selectedEventId
-      );
+    const selected =
+      currentEvent();
 
 
-    updateGameDisplay(
-      event
+    updateGameHeader(
+      selected
     );
 
 
-    await loadEventOdds(
+    await loadOdds(
       selectedEventId
     );
 
@@ -1498,20 +2066,24 @@ document.getElementById(
   "change",
   () => {
 
-    /*
-      NO API REQUEST HERE.
+    renderAll();
 
-      We already have the event's odds.
-      Just redraw using the selected book.
-    */
+  }
+);
 
-    renderBets();
 
-    updateMarketOverview(
-      events.find(
-        e =>
-          e.id === selectedEventId
-      )
+document.querySelectorAll(
+  ".checks input"
+).forEach(
+  checkbox => {
+
+    checkbox.addEventListener(
+      "change",
+      () => {
+
+        renderAll();
+
+      }
     );
 
   }
@@ -1522,15 +2094,12 @@ document.getElementById(
   "risk"
 ).addEventListener(
   "input",
-  () => {
+  event => {
 
     document.getElementById(
       "riskDisplay"
     ).textContent =
-      "$" +
-      document.getElementById(
-        "risk"
-      ).value;
+      "$" + event.target.value;
 
   }
 );
@@ -1540,15 +2109,12 @@ document.getElementById(
   "bankroll"
 ).addEventListener(
   "input",
-  () => {
+  event => {
 
     document.getElementById(
       "bankDisplay"
     ).textContent =
-      "$" +
-      document.getElementById(
-        "bankroll"
-      ).value;
+      "$" + event.target.value;
 
   }
 );
@@ -1559,6 +2125,15 @@ document.getElementById(
 ========================================================= */
 
 async function runAnalysis() {
+
+  /*
+    Refresh events.
+
+    We do NOT automatically load props.
+    Props are deliberately on-demand so
+    one accidental page refresh doesn't
+    burn another props request.
+  */
 
   await loadEvents();
 
