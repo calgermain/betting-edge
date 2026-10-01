@@ -112,40 +112,33 @@ const SPORT_MAP = {
 };
 
 let events = [];
+let oddsData = [];
 let selectedEventId = null;
 let bets = [];
 let active = "All";
 
-const baseBets = [
-  {id:1,name:"Jaylen Warren O65.5 rushing yards",type:"Player Prop",odds:-115,est:.60,conf:"Medium",risk:"Medium",corr:"positive",reason:"Projected rushing volume benefits from a competitive script; matchup and expected workload support the over.",stats:"Usage/volume + matchup",riskText:"Early deficit or reduced workload could shift attempts toward passing.",invalid:"Unexpected snap-count limitation or major offensive-line change."},
-  {id:2,name:"Roman Wilson O22.5 receiving yards",type:"Player Prop",odds:-105,est:.59,conf:"Medium",risk:"Medium",corr:"positive",reason:"Target opportunity creates a modest edge at a relatively low yardage threshold.",stats:"Target share + route expectation",riskText:"Uncertain rotation creates wider variance than the raw projection suggests.",invalid:"Inactive/limited participation or unexpected personnel usage."},
-  {id:3,name:"Pat Freiermuth O28.5 receiving yards",type:"Player Prop",odds:-110,est:.60,conf:"Medium",risk:"Medium",corr:"positive",reason:"Tight-end route volume and short-area usage support a stable floor.",stats:"Routes + short-area targets",riskText:"Red-zone role does not guarantee yardage; game script can suppress volume.",invalid:"Role change or snap restriction."},
-  {id:4,name:"Browns +2.5",type:"Spread",odds:-110,est:.56,conf:"Medium",risk:"Low",corr:"neutral",reason:"Market moved toward Cleveland while the model sees a close-game distribution.",stats:"Line movement + matchup",riskText:"Turnovers and late-game variance dominate a narrow spread.",invalid:"Major QB/OL availability change."},
-  {id:5,name:"Game Under 39.5",type:"Total",odds:-110,est:.54,conf:"Low",risk:"Medium",corr:"negative",reason:"Current price is close to model fair value with modest defensive/situational support.",stats:"Pace + scoring environment",riskText:"Explosive plays can break a low total quickly.",invalid:"Weather shift or unexpected tempo/lineup news."},
-  {id:6,name:"Steelers ML",type:"Moneyline",odds:-135,est:.55,conf:"Low",risk:"Medium",corr:"neutral",reason:"Model makes Pittsburgh a modest favorite but price leaves limited room for error.",stats:"Win probability + price",riskText:"Negative expected value can appear even when a team is more likely to win.",invalid:"Key player inactive."},
-  {id:7,name:"George Pickens O4.5 receptions",type:"Player Prop",odds:-125,est:.61,conf:"Medium",risk:"Medium",corr:"positive",reason:"Catch-volume angle pairs naturally with expected passing opportunity.",stats:"Routes + target volume",riskText:"Efficiency and game script can reduce reception count.",invalid:"Route participation changes."}
-];
+/* -----------------------------
+   BASIC ODDS MATH
+------------------------------ */
 
 function implied(o) {
-  return o < 0 ? (-o) / (-o + 100) : 100 / (o + 100);
+  return o < 0
+    ? (-o) / (-o + 100)
+    : 100 / (o + 100);
 }
 
 function american(p) {
-  return p >= .5
+  if (p <= 0 || p >= 1) return 0;
+
+  return p >= 0.5
     ? Math.round(-100 * p / (1 - p))
     : Math.round(100 * (1 - p) / p);
 }
 
 function fmtOdds(o) {
-  return o > 0 ? "+" + o : o;
-}
-
-function edge(b) {
-  return b.est - implied(b.odds);
-}
-
-function getSportCode() {
-  return SPORT_MAP[document.getElementById("sport").value] || "americanfootball_nfl";
+  const n = Number(o);
+  if (!Number.isFinite(n)) return "—";
+  return n > 0 ? "+" + n : String(n);
 }
 
 function formatEventName(event) {
@@ -154,6 +147,7 @@ function formatEventName(event) {
 
 function formatEventDate(event) {
   if (!event.commence_time) return "";
+
   return new Date(event.commence_time).toLocaleString([], {
     weekday: "short",
     month: "short",
@@ -163,40 +157,52 @@ function formatEventDate(event) {
   });
 }
 
+/* -----------------------------
+   API
+------------------------------ */
+
+async function api(path) {
+  const response = await fetch(API_BASE + path);
+
+  if (!response.ok) {
+    throw new Error(`API request failed: ${response.status}`);
+  }
+
+  return await response.json();
+}
+
+/* -----------------------------
+   EVENTS
+------------------------------ */
+
 async function loadEvents() {
-  const sport = getSportCode();
+  const sportName = document.getElementById("sport").value;
+  const sport = SPORT_MAP[sportName] || "americanfootball_nfl";
+
   const dateInput = document.getElementById("date");
   const gameSelect = document.getElementById("game");
 
-  gameSelect.innerHTML = `<option>Loading games...</option>`;
   gameSelect.disabled = true;
+  gameSelect.innerHTML = `<option>Loading games...</option>`;
 
   try {
-    const response = await fetch(
-      `${API_BASE}/api/v1/events?sport=${encodeURIComponent(sport)}`
+    const payload = await api(
+      `/api/v1/events?sport=${encodeURIComponent(sport)}`
     );
 
-    if (!response.ok) {
-      throw new Error(`Backend returned ${response.status}`);
-    }
-
-    const payload = await response.json();
     events = payload.data || [];
 
-    /*
-      The backend currently returns the upcoming events available
-      from The Odds API. We use the selected date to filter them.
-    */
     const selectedDate = dateInput.value;
 
     let matching = events.filter(event => {
       if (!event.commence_time) return false;
+
       return event.commence_time.slice(0, 10) === selectedDate;
     });
 
     /*
-      If the selected date has no games, keep the dropdown usable
-      by showing all currently available upcoming games.
+      If there are no games on the selected date,
+      show all upcoming events returned by the API.
     */
     if (!matching.length) {
       matching = events;
@@ -206,14 +212,18 @@ async function loadEvents() {
 
     if (!matching.length) {
       gameSelect.innerHTML = `<option>No games available</option>`;
+      selectedEventId = null;
       updateGameDisplay(null);
       return;
     }
 
     matching.forEach(event => {
       const option = document.createElement("option");
+
       option.value = event.id;
-      option.textContent = `${formatEventName(event)} — ${formatEventDate(event)}`;
+      option.textContent =
+        `${formatEventName(event)} — ${formatEventDate(event)}`;
+
       gameSelect.appendChild(option);
     });
 
@@ -222,22 +232,210 @@ async function loadEvents() {
 
     updateGameDisplay(matching[0]);
 
-  } catch (error) {
-    console.error("Failed to load events:", error);
+    await loadOdds();
 
-    gameSelect.innerHTML = `<option>Unable to load games</option>`;
+  } catch (error) {
+    console.error("Event loading failed:", error);
+
+    gameSelect.innerHTML =
+      `<option>Unable to load games</option>`;
+
     updateGameDisplay(null);
   } finally {
     gameSelect.disabled = false;
   }
 }
 
+/* -----------------------------
+   LIVE ODDS
+------------------------------ */
+
+async function loadOdds() {
+  const sportName = document.getElementById("sport").value;
+  const sport = SPORT_MAP[sportName] || "americanfootball_nfl";
+
+  try {
+    const payload = await api(
+      `/api/v1/odds?sport=${encodeURIComponent(sport)}&markets=h2h,spreads,totals&regions=us`
+    );
+
+    oddsData = payload.data || [];
+
+    buildLiveBets();
+
+  } catch (error) {
+    console.error("Odds loading failed:", error);
+
+    oddsData = [];
+    bets = [];
+
+    renderBets();
+    updateMarketOverview(null);
+  }
+}
+
+/* -----------------------------
+   CONVERT API ODDS → UI BETS
+------------------------------ */
+
+function buildLiveBets() {
+  const selectedBook = document.getElementById("book").value;
+
+  const event = oddsData.find(x =>
+    x.id === selectedEventId
+  );
+
+  if (!event) {
+    bets = [];
+    renderBets();
+    updateMarketOverview(null);
+    return;
+  }
+
+  const result = [];
+
+  /*
+    The normalized backend format may contain bookmakers
+    under different structures depending on the provider.
+    We handle the standard normalized format first.
+  */
+
+  const bookmakers = event.bookmakers || [];
+
+  bookmakers.forEach(bookmaker => {
+
+    if (
+      selectedBook &&
+      bookmaker.title &&
+      bookmaker.title.toLowerCase() !== selectedBook.toLowerCase()
+    ) {
+      return;
+    }
+
+    const markets = bookmaker.markets || [];
+
+    markets.forEach(market => {
+
+      const marketKey = market.key;
+
+      if (!["h2h", "spreads", "totals"].includes(marketKey)) {
+        return;
+      }
+
+      const outcomes = market.outcomes || [];
+
+      outcomes.forEach(outcome => {
+
+        let name = outcome.name || "Unknown";
+        let odds = outcome.price;
+
+        if (!Number.isFinite(Number(odds))) {
+          return;
+        }
+
+        let displayName = name;
+
+        if (marketKey === "spreads") {
+          if (outcome.point !== undefined) {
+            displayName += ` ${outcome.point > 0 ? "+" : ""}${outcome.point}`;
+          }
+        }
+
+        if (marketKey === "totals") {
+          if (outcome.point !== undefined) {
+            displayName += ` ${outcome.point}`;
+          }
+        }
+
+        let type = "Moneyline";
+
+        if (marketKey === "spreads") {
+          type = "Spread";
+        }
+
+        if (marketKey === "totals") {
+          type = "Total";
+        }
+
+        result.push({
+          id:
+            `${event.id}-${marketKey}-${name}-${outcome.point || ""}-${bookmaker.key || bookmaker.title}`,
+
+          name: displayName,
+
+          type,
+
+          marketKey,
+
+          odds: Number(odds),
+
+          implied: implied(Number(odds)),
+
+          book: bookmaker.title || selectedBook || "Sportsbook",
+
+          est: null,
+
+          conf: "Pending",
+
+          risk: "Pending",
+
+          reason:
+            "Live sportsbook market. Model probability has not yet been estimated.",
+
+          stats:
+            "Market price available from sportsbook.",
+
+          riskText:
+            "A market price alone does not establish positive expected value.",
+
+          invalid:
+            "Line movement, injury news, lineup changes, or other market information."
+        });
+
+      });
+
+    });
+
+  });
+
+  /*
+    Remove duplicate market entries while preserving order.
+  */
+
+  const seen = new Set();
+
+  bets = result.filter(b => {
+    if (seen.has(b.id)) return false;
+    seen.add(b.id);
+    return true;
+  });
+
+  updateMarketOverview(event);
+
+  renderBets();
+
+  document.getElementById("candidateCount").textContent =
+    bets.length;
+
+  document.getElementById("bestEdge").textContent =
+    "MODEL PENDING";
+
+  renderParlays();
+  renderFinal();
+}
+
+/* -----------------------------
+   GAME DISPLAY
+------------------------------ */
+
 function updateGameDisplay(event) {
-  const gameMetric = document.querySelector(".summary .metric:first-child");
+  const gameMetric =
+    document.querySelector(".summary .metric:first-child");
 
   if (!event) {
     gameMetric.querySelector(".v").textContent = "NO GAME";
-    gameMetric.querySelector(".s").textContent = "No event available";
+    gameMetric.querySelector(".s").textContent =
+      "No event available";
     return;
   }
 
@@ -246,62 +444,145 @@ function updateGameDisplay(event) {
 
   gameMetric.querySelector(".s").textContent =
     formatEventDate(event);
+}
 
-  /*
-    This is intentionally visible in the interface so we know
-    which real event is currently selected.
-  */
-  const marketHeading = document.querySelector(".section .section-head .pill");
-  if (marketHeading) {
-    marketHeading.textContent = "LIVE API";
-    marketHeading.className = "pill g";
+/* -----------------------------
+   MARKET OVERVIEW
+------------------------------ */
+
+function updateMarketOverview(event) {
+  const container =
+    document.querySelector(".section .market-grid");
+
+  if (!container) return;
+
+  if (!event) {
+    container.innerHTML = `
+      <div class="kv">
+        <span class="muted">Market</span>
+        <b>No market data</b>
+      </div>
+
+      <div class="kv">
+        <span class="muted">Status</span>
+        <b class="yellow">Waiting</b>
+      </div>
+
+      <div class="kv">
+        <span class="muted">Source</span>
+        <b>The Odds API</b>
+      </div>
+
+      <div class="kv">
+        <span class="muted">Model</span>
+        <b class="yellow">Pending</b>
+      </div>
+    `;
+
+    return;
   }
-}
 
-function syncSelectedEvent() {
-  const gameSelect = document.getElementById("game");
-  selectedEventId = gameSelect.value;
+  const selectedBook =
+    document.getElementById("book").value.toLowerCase();
 
-  const event = events.find(e => e.id === selectedEventId);
+  const markets = [];
 
-  if (event) {
-    updateGameDisplay(event);
+  (event.bookmakers || []).forEach(bookmaker => {
+
+    if (
+      bookmaker.title &&
+      bookmaker.title.toLowerCase() !== selectedBook
+    ) {
+      return;
+    }
+
+    (bookmaker.markets || []).forEach(market => {
+      markets.push({
+        bookmaker,
+        market
+      });
+    });
+
+  });
+
+  const spread = markets.find(x =>
+    x.market.key === "spreads"
+  );
+
+  const total = markets.find(x =>
+    x.market.key === "totals"
+  );
+
+  const moneyline = markets.find(x =>
+    x.market.key === "h2h"
+  );
+
+  function marketText(item) {
+    if (!item) return "Unavailable";
+
+    const outcomes = item.market.outcomes || [];
+
+    return outcomes
+      .slice(0, 2)
+      .map(o => {
+        let text = o.name;
+
+        if (o.point !== undefined) {
+          text += ` ${o.point > 0 ? "+" : ""}${o.point}`;
+        }
+
+        text += ` · ${fmtOdds(o.price)}`;
+
+        return text;
+      })
+      .join(" / ");
   }
+
+  const bookName =
+    (spread || total || moneyline)?.bookmaker?.title ||
+    document.getElementById("book").value;
+
+  container.innerHTML = `
+    <div class="kv">
+      <span class="muted">${bookName} spread</span>
+      <b>${marketText(spread)}</b>
+      <span class="sub">Live market</span>
+    </div>
+
+    <div class="kv">
+      <span class="muted">Total</span>
+      <b>${marketText(total)}</b>
+      <span class="sub">Live market</span>
+    </div>
+
+    <div class="kv">
+      <span class="muted">Moneyline</span>
+      <b>${marketText(moneyline)}</b>
+      <span class="sub">Live market</span>
+    </div>
+
+    <div class="kv">
+      <span class="muted">Model</span>
+      <b class="yellow">Pending</b>
+      <span class="sub">Probability layer not connected</span>
+    </div>
+  `;
 }
 
-async function runAnalysis() {
-  await loadEvents();
-
-  /*
-    Candidate calculations are still mock at this stage.
-    We will replace these with real market-derived candidates
-    after the event selector is working.
-  */
-  const book = document.getElementById("book").value;
-
-  bets = baseBets.map(b => ({
-    ...b,
-    book
-  }));
-
-  document.getElementById("candidateCount").textContent = bets.length;
-
-  document.getElementById("bestEdge").textContent =
-    "+" + (Math.max(...bets.map(edge)) * 100).toFixed(1) + "%";
-
-  renderFilters();
-  renderBets();
-  renderParlays();
-  renderFinal();
-}
+/* -----------------------------
+   FILTERS
+------------------------------ */
 
 function renderFilters() {
   document.getElementById("filters").innerHTML =
     ["All", "Player Prop", "Spread", "Total", "Moneyline"]
-      .map(x =>
-        `<button class="${active === x ? "active" : ""}"
-          onclick="setFilter('${x}')">${x}</button>`
-      )
+      .map(x => `
+        <button
+          class="${active === x ? "active" : ""}"
+          onclick="setFilter('${x}')">
+          ${x}
+        </button>
+      `)
       .join("");
 }
 
@@ -311,270 +592,362 @@ function setFilter(x) {
   renderBets();
 }
 
+/* -----------------------------
+   BET TABLE
+------------------------------ */
+
 function renderBets() {
-  const arr = active === "All"
-    ? bets
-    : bets.filter(b => b.type === active);
+  const arr =
+    active === "All"
+      ? bets
+      : bets.filter(b => b.type === active);
 
-  document.getElementById("betBody").innerHTML = arr.map(b => `
-    <tr onclick="toggle(${b.id})">
-      <td>＋</td>
-      <td>
-        <div class="betname">${b.name}</div>
-        <div class="sub">${b.type}</div>
-      </td>
-      <td>${b.book}</td>
-      <td>${fmtOdds(b.odds)}</td>
-      <td>${(implied(b.odds) * 100).toFixed(1)}%</td>
-      <td>${(b.est * 100).toFixed(1)}%</td>
-      <td class="${edge(b) > 0 ? "green" : "red"}">
-        <b>${edge(b) >= 0 ? "+" : ""}${(edge(b) * 100).toFixed(1)}%</b>
-      </td>
-      <td>
-        <span class="pill ${b.conf === "Medium" ? "y" : "r"}">
-          ${b.conf}
-        </span>
-      </td>
-      <td>${b.risk}</td>
-    </tr>
+  if (!arr.length) {
+    document.getElementById("betBody").innerHTML = `
+      <tr>
+        <td colspan="9">
+          <span class="muted">
+            No live markets available for this selection.
+          </span>
+        </td>
+      </tr>
+    `;
 
-    <tr class="expand" id="exp${b.id}">
-      <td colspan="9">
-        <div class="reason-grid">
-          <div class="reason">
-            <h4>Why considered</h4>
-            ${b.reason}
-            <div class="sub" style="margin-top:6px">${b.stats}</div>
-          </div>
+    return;
+  }
 
-          <div class="reason">
-            <h4>Risks</h4>
-            ${b.riskText}
-          </div>
+  document.getElementById("betBody").innerHTML =
+    arr.map(b => {
 
-          <div class="reason">
-            <h4>Invalidating information</h4>
-            ${b.invalid}
-          </div>
-        </div>
-      </td>
-    </tr>
-  `).join("");
+      const impliedPct =
+        (b.implied * 100).toFixed(1) + "%";
+
+      return `
+        <tr onclick="toggle('${b.id}')">
+
+          <td>＋</td>
+
+          <td>
+            <div class="betname">
+              ${b.name}
+            </div>
+
+            <div class="sub">
+              ${b.type}
+            </div>
+          </td>
+
+          <td>
+            ${b.book}
+          </td>
+
+          <td>
+            ${fmtOdds(b.odds)}
+          </td>
+
+          <td>
+            ${impliedPct}
+          </td>
+
+          <td>
+            <span class="muted">
+              Pending model
+            </span>
+          </td>
+
+          <td>
+            <span class="pill y">
+              Pending
+            </span>
+          </td>
+
+          <td>
+            <span class="pill y">
+              Unrated
+            </span>
+          </td>
+
+          <td>
+            Market
+          </td>
+
+        </tr>
+
+        <tr class="expand" id="exp${CSS.escape(b.id)}">
+
+          <td colspan="9">
+
+            <div class="reason-grid">
+
+              <div class="reason">
+                <h4>Market</h4>
+                ${b.reason}
+                <div class="sub" style="margin-top:6px">
+                  ${b.stats}
+                </div>
+              </div>
+
+              <div class="reason">
+                <h4>Risk</h4>
+                ${b.riskText}
+              </div>
+
+              <div class="reason">
+                <h4>Invalidating information</h4>
+                ${b.invalid}
+              </div>
+
+            </div>
+
+          </td>
+
+        </tr>
+      `;
+    }).join("");
 }
 
 function toggle(id) {
-  const e = document.getElementById("exp" + id);
+  const e =
+    document.getElementById("exp" + CSS.escape(id));
+
+  if (!e) return;
+
   e.style.display =
     e.style.display === "table-row"
       ? "none"
       : "table-row";
 }
 
-function parlay(name, ids, adjust) {
-  const legs = ids
-    .map(id => bets.find(b => b.id === id))
-    .filter(Boolean);
-
-  if (!legs.length) {
-    return {
-      name,
-      legs: [],
-      p: 0,
-      odds: 0,
-      impliedP: 0,
-      corr: "N/A"
-    };
-  }
-
-  let p =
-    legs.reduce((x, b) => x * b.est, 1) * adjust;
-
-  const odds = american(p);
-
-  const impliedP =
-    legs.reduce((x, b) => x * implied(b.odds), 1);
-
-  const corr =
-    adjust > 1
-      ? "MODERATE POSITIVE"
-      : adjust < 1
-        ? "MIXED / NEGATIVE"
-        : "MOSTLY INDEPENDENT";
-
-  return {
-    name,
-    legs,
-    p,
-    odds,
-    impliedP,
-    corr
-  };
-}
+/* -----------------------------
+   PARLAYS
+------------------------------ */
 
 function renderParlays() {
-  const pool = bets
-    .filter(b => edge(b) > 0)
-    .sort((a, b) => edge(b) - edge(a));
+  document.getElementById("parlays").innerHTML = `
+    <div class="card parlay">
+      <div class="eyebrow">Model Status</div>
 
-  const sets = [
-    parlay("Conservative", pool.slice(0, 3).map(x => x.id), 1.10),
-    parlay("Balanced", pool.slice(0, 4).map(x => x.id), 1.07),
-    parlay("Aggressive", pool.slice(0, 6).map(x => x.id), .96),
-    parlay("Best Value", pool.slice(0, 3).map(x => x.id), 1.06)
-  ];
+      <h3>LIVE MARKET DATA</h3>
 
-  document.getElementById("parlays").innerHTML =
-    sets.map(p => `
-      <div class="card parlay">
-        <div class="eyebrow">${p.name}</div>
-        <h3>${p.legs.length} LEG · ${fmtOdds(p.odds)}</h3>
+      <div class="legs">
 
-        <div class="legs">
-          ${p.legs.map((l, i) => `
-            <div class="leg">
-              <span class="num">${i + 1}</span>
-              <span>
-                ${l.name}
-                <div class="sub">
-                  ${fmtOdds(l.odds)} · est ${(l.est * 100).toFixed(0)}%
-                </div>
-              </span>
+        <div class="leg">
+          <span class="num">1</span>
+          <span>
+            Live sportsbook markets loaded
+            <div class="sub">
+              Probability model pending
             </div>
-          `).join("")}
+          </span>
         </div>
 
-        <div class="big">
-          ${(p.p * 100).toFixed(1)}%
-          <span class="sub">estimated probability</span>
+        <div class="leg">
+          <span class="num">2</span>
+          <span>
+            Implied probabilities calculated
+            <div class="sub">
+              Directly from market prices
+            </div>
+          </span>
         </div>
 
-        <div class="parlay-footer">
-          <div class="mini">
-            <small>COMBINED IMPLIED</small>
-            <b>${(p.impliedP * 100).toFixed(1)}%</b>
-          </div>
+      </div>
 
-          <div class="mini">
-            <small>FAIR ODDS</small>
-            <b>${fmtOdds(p.odds)}</b>
-          </div>
+      <div class="big">
+        —
+        <span class="sub">
+          estimated probability
+        </span>
+      </div>
 
-          <div class="mini">
-            <small>CORRELATION</small>
-            <b>${p.corr}</b>
-          </div>
+      <div class="parlay-footer">
 
-          <div class="mini">
-            <small>VALUE</small>
-            <b class="green">
-              ${((p.p - p.impliedP) * 100).toFixed(1)} pts
-            </b>
-          </div>
+        <div class="mini">
+          <small>MODEL</small>
+          <b>PENDING</b>
         </div>
+
+        <div class="mini">
+          <small>MARKET</small>
+          <b>LIVE</b>
+        </div>
+
+        <div class="mini">
+          <small>EDGE</small>
+          <b>NOT CALCULATED</b>
+        </div>
+
+        <div class="mini">
+          <small>STATUS</small>
+          <b class="yellow">RESEARCH</b>
+        </div>
+
       </div>
-    `).join("");
-}
-
-function syncAlloc() {
-  ["a1", "a2", "a3"].forEach(id => {
-    document.getElementById(id + "v").textContent =
-      "$" + (+document.getElementById(id).value);
-  });
-}
-
-function equalize() {
-  ["a1", "a2", "a3"].forEach(id => {
-    document.getElementById(id).value = 10;
-  });
-
-  syncAlloc();
-}
-
-function renderFinal() {
-  const strong = bets
-    .filter(b => edge(b) > 0.05)
-    .sort((a, b) => edge(b) - edge(a))
-    .slice(0, 4);
-
-  document.getElementById("final").innerHTML = `
-    <div class="grid2">
-      <div>
-        <div class="eyebrow">Strongest individual opportunities</div>
-
-        <ul>
-          ${strong.map(b => `
-            <li>
-              <b>${b.name}</b> —
-              +${(edge(b) * 100).toFixed(1)} pts edge,
-              ${b.conf.toLowerCase()} confidence
-            </li>
-          `).join("")}
-        </ul>
-      </div>
-
-      <div>
-        <div class="eyebrow">Methodology status</div>
-
-        <p class="muted">
-          Live event selection is connected to the backend.
-        </p>
-
-        <p class="muted">
-          Candidate probabilities are still mock estimates.
-        </p>
-
-        <p class="muted">
-          Correlation adjustments are illustrative and must be
-          replaced by a calibrated model.
-        </p>
-      </div>
-    </div>
-
-    <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
-      <b class="yellow">Important:</b>
-      Re-check injuries, starters, weather and line movement immediately
-      before betting. Probabilities are estimates, not guarantees.
     </div>
   `;
 }
 
 /* -----------------------------
-   LIVE CONTROL EVENTS
+   FINAL ANALYSIS
 ------------------------------ */
 
-document.getElementById("sport").addEventListener("change", async () => {
-  await loadEvents();
-});
+function renderFinal() {
+  document.getElementById("final").innerHTML = `
+    <div class="grid2">
 
-document.getElementById("date").addEventListener("change", async () => {
-  await loadEvents();
-});
+      <div>
 
-document.getElementById("game").addEventListener("change", () => {
-  syncSelectedEvent();
-});
+        <div class="eyebrow">
+          Current data status
+        </div>
 
-document.getElementById("book").addEventListener("change", () => {
-  runAnalysis();
-});
+        <ul>
 
-document.getElementById("risk").addEventListener("input", () => {
-  document.getElementById("riskDisplay").textContent =
-    "$" + document.getElementById("risk").value;
-});
+          <li>
+            <b>Live events:</b>
+            connected
+          </li>
 
-document.getElementById("bankroll").addEventListener("input", () => {
-  document.getElementById("bankDisplay").textContent =
-    "$" + document.getElementById("bankroll").value;
-});
+          <li>
+            <b>Live sportsbook markets:</b>
+            connected
+          </li>
+
+          <li>
+            <b>Implied probability:</b>
+            calculated from market price
+          </li>
+
+          <li>
+            <b>Player props:</b>
+            next integration
+          </li>
+
+        </ul>
+
+      </div>
+
+      <div>
+
+        <div class="eyebrow">
+          Methodology status
+        </div>
+
+        <p class="muted">
+          Market data is being retrieved from the live
+          sportsbook feed.
+        </p>
+
+        <p class="muted">
+          Model probabilities have not yet been generated.
+        </p>
+
+        <p class="muted">
+          No positive edge is being claimed until a
+          probability model is connected.
+        </p>
+
+      </div>
+
+    </div>
+
+    <div style="
+      margin-top:12px;
+      padding-top:12px;
+      border-top:1px solid var(--border)
+    ">
+
+      <b class="yellow">
+        Research status:
+      </b>
+
+      Live market acquisition is working.
+      Probability and player-prop modeling are the next layers.
+
+    </div>
+  `;
+}
 
 /* -----------------------------
-   INITIALIZE
+   CONTROL EVENTS
+------------------------------ */
+
+document.getElementById("sport")
+  .addEventListener("change", async () => {
+
+    await loadEvents();
+
+  });
+
+document.getElementById("date")
+  .addEventListener("change", async () => {
+
+    await loadEvents();
+
+  });
+
+document.getElementById("game")
+  .addEventListener("change", async () => {
+
+    selectedEventId =
+      document.getElementById("game").value;
+
+    const event =
+      events.find(e => e.id === selectedEventId);
+
+    updateGameDisplay(event);
+
+    await loadOdds();
+
+  });
+
+document.getElementById("book")
+  .addEventListener("change", async () => {
+
+    buildLiveBets();
+
+  });
+
+document.getElementById("risk")
+  .addEventListener("input", () => {
+
+    document.getElementById("riskDisplay").textContent =
+      "$" + document.getElementById("risk").value;
+
+  });
+
+document.getElementById("bankroll")
+  .addEventListener("input", () => {
+
+    document.getElementById("bankDisplay").textContent =
+      "$" + document.getElementById("bankroll").value;
+
+  });
+
+/* -----------------------------
+   RUN RESEARCH
+------------------------------ */
+
+async function runAnalysis() {
+
+  await loadEvents();
+
+  document.getElementById("candidateCount").textContent =
+    bets.length;
+
+}
+
+/* -----------------------------
+   INITIALIZATION
 ------------------------------ */
 
 renderFilters();
+renderFinal();
+renderParlays();
 syncAlloc();
+
 runAnalysis();
+
 </script>
 </body>
 </html>
