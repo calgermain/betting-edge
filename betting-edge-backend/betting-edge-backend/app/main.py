@@ -4,16 +4,23 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
 from .config import get_settings
-from .providers.odds_api import OddsApiProvider, OddsApiError
+from .providers.odds_api import (
+    OddsApiProvider,
+    OddsApiError,
+)
 from .normalizer import normalize_odds
-from .calculations import implied_probability, american_odds, edge
+from .calculations import (
+    implied_probability,
+    american_odds,
+    edge,
+)
 
 
 settings = get_settings()
 
 app = FastAPI(
     title="Betting Edge API",
-    version="0.1.0",
+    version="0.2.0",
 )
 
 
@@ -32,10 +39,6 @@ provider = OddsApiProvider(
 )
 
 
-# ---------------------------------------------------------
-# HEALTH
-# ---------------------------------------------------------
-
 @app.get("/health")
 async def health():
     return {
@@ -44,10 +47,6 @@ async def health():
         "time": datetime.now(timezone.utc),
     }
 
-
-# ---------------------------------------------------------
-# SPORTS
-# ---------------------------------------------------------
 
 @app.get("/api/v1/sports")
 async def sports():
@@ -59,15 +58,8 @@ async def sports():
         }
 
     except OddsApiError as e:
-        raise HTTPException(
-            status_code=502,
-            detail=str(e),
-        )
+        raise HTTPException(502, str(e))
 
-
-# ---------------------------------------------------------
-# EVENTS
-# ---------------------------------------------------------
 
 @app.get("/api/v1/events")
 async def events(
@@ -81,15 +73,8 @@ async def events(
         }
 
     except OddsApiError as e:
-        raise HTTPException(
-            status_code=502,
-            detail=str(e),
-        )
+        raise HTTPException(502, str(e))
 
-
-# ---------------------------------------------------------
-# ALL SPORT ODDS
-# ---------------------------------------------------------
 
 @app.get("/api/v1/odds")
 async def odds(
@@ -113,21 +98,14 @@ async def odds(
             "fetched_at": datetime.now(timezone.utc),
             "quota": quota,
             "data": [
-                x.model_dump(mode="json")
-                for x in normalized
+                item.model_dump(mode="json")
+                for item in normalized
             ],
         }
 
     except OddsApiError as e:
-        raise HTTPException(
-            status_code=502,
-            detail=str(e),
-        )
+        raise HTTPException(502, str(e))
 
-
-# ---------------------------------------------------------
-# SINGLE EVENT ODDS
-# ---------------------------------------------------------
 
 @app.get("/api/v1/events/{event_id}/odds")
 async def event_odds(
@@ -138,15 +116,20 @@ async def event_odds(
     bookmakers: str | None = None,
 ):
     try:
-        raw, quota = await provider.event_props(
+        raw, quota = await provider.odds(
             sport,
-            event_id,
             regions,
             markets,
             bookmakers,
         )
 
-        normalized = normalize_odds([raw])
+        matching = [
+            item
+            for item in raw
+            if item.get("id") == event_id
+        ]
+
+        normalized = normalize_odds(matching)
 
         return {
             "source": "the-odds-api",
@@ -160,21 +143,22 @@ async def event_odds(
         }
 
     except OddsApiError as e:
-        raise HTTPException(
-            status_code=502,
-            detail=str(e),
-        )
+        raise HTTPException(502, str(e))
 
-
-# ---------------------------------------------------------
-# PLAYER PROPS
-# ---------------------------------------------------------
 
 @app.get("/api/v1/events/{event_id}/props")
 async def props(
     event_id: str,
     sport: str = "americanfootball_nfl",
-    markets: str = "player_rush_yds,player_reception_yds",
+    markets: str = (
+        "player_pass_yds,"
+        "player_pass_tds,"
+        "player_rush_yds,"
+        "player_rush_attempts,"
+        "player_reception_yds,"
+        "player_receptions,"
+        "player_anytime_td"
+    ),
     regions: str = "us",
     bookmakers: str | None = None,
 ):
@@ -201,15 +185,8 @@ async def props(
         }
 
     except OddsApiError as e:
-        raise HTTPException(
-            status_code=502,
-            detail=str(e),
-        )
+        raise HTTPException(502, str(e))
 
-
-# ---------------------------------------------------------
-# EVENT MARKETS
-# ---------------------------------------------------------
 
 @app.get("/api/v1/events/{event_id}/markets")
 async def markets(
@@ -218,55 +195,47 @@ async def markets(
     regions: str = "us",
 ):
     try:
+        data, quota = await provider.event_markets(
+            sport,
+            event_id,
+            regions,
+        )
+
         return {
             "source": "the-odds-api",
             "fetched_at": datetime.now(timezone.utc),
-            "data": await provider.event_markets(
-                sport,
-                event_id,
-                regions,
-            ),
+            "quota": quota,
+            "data": data,
         }
 
     except OddsApiError as e:
-        raise HTTPException(
-            status_code=502,
-            detail=str(e),
-        )
+        raise HTTPException(502, str(e))
 
-
-# ---------------------------------------------------------
-# IMPLIED PROBABILITY
-# ---------------------------------------------------------
 
 @app.get("/api/v1/calculations/implied")
-async def calc_implied(
-    odds: float,
-):
-    p = implied_probability(odds)
+async def calc_implied(odds: float):
+    probability = implied_probability(odds)
 
     return {
         "american_odds": odds,
-        "implied_probability": p,
-        "fair_american_odds": american_odds(p),
+        "implied_probability": probability,
+        "fair_american_odds": american_odds(
+            probability
+        ),
     }
 
-
-# ---------------------------------------------------------
-# EDGE
-# ---------------------------------------------------------
 
 @app.get("/api/v1/calculations/edge")
 async def calc_edge(
     odds: float,
     estimated_probability: float,
 ):
-    p = implied_probability(odds)
+    probability = implied_probability(odds)
 
     return {
         "american_odds": odds,
         "estimated_probability": estimated_probability,
-        "implied_probability": p,
+        "implied_probability": probability,
         "edge": edge(
             estimated_probability,
             odds,
