@@ -2008,7 +2008,8 @@ async function loadResearch(force=false){
     const params =
       new URLSearchParams({
         home_team: event.home_team,
-        away_team: event.away_team
+        away_team: event.away_team,
+        kickoff: event.commence_time
       });
     // Only request location-specific weather for verified venue coordinates.
     // Without coordinates the backend returns news but no stadium forecast.
@@ -2287,8 +2288,20 @@ function renderWeather(weather){
 
   }
 
-  const current =
-    weather.current || {};
+  if(weather.status && weather.status !== "forecast"){
+    const messages={
+      missing_kickoff:"Kickoff time unavailable.",
+      invalid_kickoff:"Kickoff time invalid.",
+      past_game:"Game already started or completed.",
+      outside_forecast_window:"Kickoff forecast not yet available (more than 15 days away).",
+      unavailable:"Kickoff forecast unavailable."
+    };
+    box.innerHTML='<div class="research-empty">'+escapeHtml(messages[weather.status] || "Forecast unavailable.")+'</div>';
+    document.getElementById("weatherStatus").textContent="NOT AVAILABLE";
+    document.getElementById("weatherUpdated").textContent="";
+    return;
+  }
+  const current = weather.status === "forecast" ? weather : (weather.current || {});
 
   const temp =
     current.temperature_2m;
@@ -2337,7 +2350,7 @@ function renderWeather(weather){
       <div class="weather-value">
         ${
           precipitation !== undefined
-            ? `${precipitation}`
+            ? `${precipitation} mm`
             : "—"
         }
       </div>
@@ -2357,7 +2370,7 @@ function renderWeather(weather){
   document.getElementById(
     "weatherStatus"
   ).textContent =
-    "LIVE";
+    weather.status === "forecast" ? "KICKOFF FORECAST" : "CURRENT";
 
   document.getElementById(
     "weatherStatus"
@@ -2367,7 +2380,7 @@ function renderWeather(weather){
   document.getElementById(
     "weatherUpdated"
   ).textContent =
-    "Current forecast retrieved from the weather provider.";
+    weather.forecast_for ? "Forecast for "+new Date(weather.forecast_for).toLocaleString()+" (not observed conditions)." : "Current conditions retrieved from weather provider.";
 
 }
 
