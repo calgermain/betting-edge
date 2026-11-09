@@ -9,6 +9,10 @@ from .providers.research import ResearchProvider
 from .normalizer import normalize_odds
 from .calculations import implied_probability, american_odds, edge
 from .nfl_venues import nfl_home_venue
+from .player_trends import PlayerTrendRequest, analyze_player_trend
+from .player_csv import analyze_csv, PlayerCsvError
+from .nflverse_stats import weekly_rows, analyze_weekly, StatsUnavailable, MARKETS
+from pydantic import BaseModel, Field
 
 
 # =========================================================
@@ -220,6 +224,7 @@ async def research_game(
     away_team: str = Query(...),
     latitude: float | None = Query(None),
     longitude: float | None = Query(None),
+    kickoff: str | None = Query(None),
 ):
     """
     Collect current research for a selected game.
@@ -241,6 +246,7 @@ async def research_game(
             away_team=away_team,
             latitude=latitude,
             longitude=longitude,
+            kickoff=kickoff,
         )
         data["venue"] = venue
         if venue and not venue["outdoor"] and latitude is None:
@@ -255,7 +261,7 @@ async def research_game(
     except Exception as e:
         raise HTTPException(
             status_code=502,
-            detail=f"Research request failed: {e}",
+            detail="Research request failed.",
         )
 
 
@@ -304,6 +310,7 @@ async def research_news(
 async def research_weather(
     latitude: float,
     longitude: float,
+    kickoff: str | None = Query(None),
 ):
     """
     Current and forecast weather for a game location.
@@ -313,6 +320,7 @@ async def research_weather(
         data = await research.weather(
             latitude=latitude,
             longitude=longitude,
+            kickoff=kickoff,
         )
 
         return {
@@ -324,7 +332,7 @@ async def research_weather(
     except Exception as e:
         raise HTTPException(
             status_code=502,
-            detail=f"Weather request failed: {e}",
+            detail="Weather request failed.",
         )
 
 
@@ -370,3 +378,50 @@ async def calc_edge(
             estimated_probability
         ),
     }
+
+
+# =========================================================
+# NFL PLAYER TRENDS — CALLER-SUPPLIED VERIFIED GAME LOGS
+# =========================================================
+
+@app.post("/api/v1/nfl/player-trends")
+async def nfl_player_trends(request: PlayerTrendRequest):
+    return {"source": "caller-supplied-game-logs", "data": analyze_player_trend(request)}
+
+
+class NflPlayerCsvRequest(BaseModel):
+    player: str = Field(min_length=1, max_length=120)
+    market: str
+    line: float = Field(ge=0, allow_inf_nan=False)
+    csv_text: str = Field(min_length=1, max_length=32_000)
+
+
+@app.post("/api/v1/nfl/player-trends/csv")
+async def nfl_player_trends_csv(request: NflPlayerCsvRequest):
+    try:
+        result = analyze_csv(request.player, request.market, request.line, request.csv_text)
+    except PlayerCsvError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return {"source": "caller-supplied-csv", "data": result}
+
+
+@app.get("/api/v1/nfl/player-stats")
+async def nfl_player_stats(
+    player: str = Query(..., min_length=2, max_length=120),
+    market: str = Query(...),
+    line: float = Query(..., ge=0, allow_inf_nan=False),
+    season: int = Query(2026, ge=1999, le=2100),
+    player_id: str | None = Query(None, max_length=80),
+):
+    """Historical nflverse weekly stats; cached and free of sportsbook API calls."""
+    if season > datetime.now(timezone.utc).year:
+        raise HTTPException(status_code=422, detail="Season cannot be in the future.")
+    if market not in MARKETS:
+        raise HTTPException(status_code=422, detail="Unsupported NFL player market.")
+    try:
+        rows, freshness = await weekly_rows(season)
+        return {"source": "nflverse", "freshness": freshness, "data": analyze_weekly(
+            rows, player, market, line, season, player_id
+        )}
+    except StatsUnavailable as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
