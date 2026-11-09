@@ -13,7 +13,7 @@ from .player_trends import PlayerTrendRequest, analyze_player_trend
 from .player_csv import analyze_csv, PlayerCsvError
 from .nflverse_stats import weekly_rows, analyze_weekly, StatsUnavailable, MARKETS
 from .nfl_projection import baseline
-from .nfl_backtest import evaluate
+from .nfl_backtest import evaluate, evaluate_population
 from pydantic import BaseModel, Field
 
 
@@ -428,5 +428,23 @@ async def nfl_player_stats(
         backtest = evaluate(data["games"]) if data["status"] == "ok" else None
         return {"source": "nflverse", "freshness": freshness, "data": data,
                 "projection": projection, "backtest": backtest}
+    except StatsUnavailable as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+
+@app.get("/api/v1/nfl/model-backtest")
+async def nfl_model_backtest(
+    market: str = Query(...),
+    season: int = Query(2026, ge=1999, le=2100),
+):
+    """Pooled historical model comparison; uses nflverse, not sportsbook credits."""
+    if market not in MARKETS:
+        raise HTTPException(status_code=422, detail="Unsupported NFL player market.")
+    if season > datetime.now(timezone.utc).year:
+        raise HTTPException(status_code=422, detail="Season cannot be in the future.")
+    try:
+        rows, freshness = await weekly_rows(season)
+        return {"source": "nflverse", "freshness": freshness,
+                "data": evaluate_population(rows, market, season)}
     except StatsUnavailable as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
