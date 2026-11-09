@@ -12,6 +12,7 @@ import io
 import math
 import re
 import time
+from datetime import datetime, timezone
 from statistics import mean, median
 
 import httpx
@@ -26,7 +27,7 @@ MARKETS = {
     "rushing_tds": "rushing_tds",
     "receiving_tds": "receiving_tds",
 }
-_cache: dict[int, tuple[float, list[dict]]] = {}
+_cache: dict[int, tuple[float, list[dict], str]] = {}
 _locks: dict[int, asyncio.Lock] = {}
 TTL_SECONDS = 6 * 60 * 60
 MAX_BYTES = 15_000_000
@@ -40,15 +41,15 @@ def _name(value: str) -> str:
     return re.sub(r"[^a-z0-9]", "", (value or "").casefold())
 
 
-async def weekly_rows(season: int) -> list[dict]:
+async def weekly_rows(season: int) -> tuple[list[dict], dict]:
     cached = _cache.get(season)
     if cached and time.monotonic() - cached[0] < TTL_SECONDS:
-        return cached[1]
+        return cached[1], _metadata(cached, False)
     lock = _locks.setdefault(season, asyncio.Lock())
     async with lock:
         cached = _cache.get(season)
         if cached and time.monotonic() - cached[0] < TTL_SECONDS:
-            return cached[1]
+            return cached[1], _metadata(cached, False)
         url = SOURCE.format(season=season)
         try:
             async with httpx.AsyncClient(timeout=35, follow_redirects=True) as client:
@@ -67,12 +68,22 @@ async def weekly_rows(season: int) -> list[dict]:
             if not required.issubset(set(reader.fieldnames or [])):
                 raise StatsUnavailable("Unexpected nflverse data schema")
             rows = list(reader)
-            _cache[season] = (time.monotonic(), rows)
-            return rows
+            entry = (time.monotonic(), rows, datetime.now(timezone.utc).isoformat())
+            _cache[season] = entry
+            return rows, _metadata(entry, False)
         except (httpx.HTTPError, UnicodeError, csv.Error) as exc:
             if cached:
-                return cached[1]  # stale data is explicitly labeled by the endpoint
+                return cached[1], _metadata(cached, True)
             raise StatsUnavailable("NFL weekly stats source unavailable") from exc
+
+
+def _metadata(entry: tuple, stale: bool) -> dict:
+    return {
+        "fetched_at": entry[2],
+        "cache_age_seconds": max(0, int(time.monotonic() - entry[0])),
+        "stale": stale,
+        "source_status": "stale_fallback" if stale else "cached_or_fresh",
+    }
 
 
 def analyze_weekly(rows: list[dict], player: str, market: str, line: float,
@@ -104,7 +115,7 @@ def analyze_weekly(rows: list[dict], player: str, market: str, line: float,
                           "value": value})
         except (KeyError, TypeError, ValueError):
             continue
-    games.sort(key=lambda row: row["week"], reverse=True)
+    # A missing game is not a zero-yard performance. Never impute weeks.\n    games.sort(key=lambda row: row["week"], reverse=True)
     if not games:
         return {"status": "no_market_data", "player": player, "season": season}
     values = [game["value"] for game in games]
@@ -114,7 +125,7 @@ def analyze_weekly(rows: list[dict], player: str, market: str, line: float,
     return {
         "status": "ok", "player": player, "player_id": next(iter(ids)),
         "market": market, "line": line, "season": season,
-        "sample_size": len(values), "games": games[:25],
+        "sample_size": len(values), "games": games[:25],\n        "latest_week": games[0]["week"],
         "average": round(mean(values), 2), "median": round(median(values), 2),
         "last_5_average": round(mean(recent), 2),
         "last_5_values": recent,
