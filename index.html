@@ -2486,9 +2486,10 @@ async function loadNflPlayerStats(){
   const button=document.getElementById("playerStatsButton");
   const player=document.getElementById("playerStatsName").value.trim();
   const market=document.getElementById("playerStatsMarket").value;
-  const line=Number(document.getElementById("playerStatsLine").value);
+  const lineInput=document.getElementById("playerStatsLine").value.trim();
+  const line=Number(lineInput);
   const season=Number(document.getElementById("playerStatsSeason").value);
-  if(!player || !Number.isFinite(line) || line<0 ||
+  if(!player || lineInput==="" || !Number.isFinite(line) || line<0 ||
      !Number.isInteger(season) || season<1999 || season>new Date().getFullYear()){
     status.textContent="CHECK INPUT";
     results.textContent="Enter a player name, valid prop line and season.";
