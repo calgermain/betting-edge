@@ -87,15 +87,8 @@ class ResearchProvider:
             return results
 
         except Exception as exc:
-            return [
-                {
-                    "title": "News search unavailable",
-                    "source": "Research service",
-                    "url": None,
-                    "published": None,
-                    "summary": str(exc),
-                }
-            ]
+            # An upstream failure is not a news article or injury report.
+            return []
 
     async def weather(
         self,
@@ -161,6 +154,12 @@ class ResearchProvider:
         lineup_items = []
         weather_items = []
 
+        injury_pattern = re.compile(
+            r"\b(?:injury|injuries|injured|questionable|doubtful|"
+            r"out|inactive|limited|ruled out)\b",
+            re.IGNORECASE,
+        )
+
         for item in flattened:
             title = (
                 item.get("title", "")
@@ -168,19 +167,7 @@ class ResearchProvider:
                 + item.get("summary", "")
             ).lower()
 
-            if any(
-                word in title
-                for word in [
-                    "injury",
-                    "injured",
-                    "questionable",
-                    "doubtful",
-                    "out",
-                    "ir ",
-                    "inactive",
-                    "limited",
-                ]
-            ):
+            if injury_pattern.search(title):
                 injury_items.append(item)
 
             if any(
