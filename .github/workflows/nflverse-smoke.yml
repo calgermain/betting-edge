@@ -1,0 +1,45 @@
+name: NFL data feed smoke test
+
+on:
+  workflow_dispatch:
+
+jobs:
+  nflverse-smoke:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: betting-edge-backend/betting-edge-backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - name: Validate real nflverse data without Odds API
+        run: |
+          python - <<'PY'
+          import asyncio
+          from app.nflverse_stats import weekly_rows, analyze_weekly
+          from app.nfl_backtest import evaluate_population
+
+          async def main():
+              rows, freshness = await weekly_rows(2025)
+              assert rows, "Empty nflverse season"
+              print("2025 rows:", len(rows), "freshness:", freshness)
+              sample = next(
+                  (r for r in rows if r.get("season_type") == "REG"
+                   and r.get("player_display_name") and r.get("player_id")
+                   and r.get("receiving_yards") not in ("", None)), None
+              )
+              assert sample, "No eligible receiving stats"
+              player = analyze_weekly(rows, sample["player_display_name"],
+                                      "receiving_yards", 50.5, 2025,
+                                      sample["player_id"])
+              assert player["status"] == "ok", player
+              print("Player sample:", player["player"], "games:", player["sample_size"])
+              result = evaluate_population(rows, "receiving_yards", 2025)
+              assert result["status"] == "evaluated", result
+              assert result["evaluated_player_games"] > 0, result
+              print("Pooled backtest:", result)
+          asyncio.run(main())
+          PY
