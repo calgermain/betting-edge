@@ -239,10 +239,8 @@ class ResearchProvider:
                     longitude,
                     kickoff,
                 )
-            except Exception as exc:
-                weather_data = {
-                    "error": str(exc)
-                }
+            except Exception:
+                weather_data = {"status": "unavailable"}
 
         return {
             "generated_at": datetime.now(
