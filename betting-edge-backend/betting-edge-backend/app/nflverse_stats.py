@@ -115,7 +115,8 @@ def analyze_weekly(rows: list[dict], player: str, market: str, line: float,
                           "value": value})
         except (KeyError, TypeError, ValueError):
             continue
-    # A missing game is not a zero-yard performance. Never impute weeks.\n    games.sort(key=lambda row: row["week"], reverse=True)
+    # A missing game is not a zero-yard performance. Never impute weeks.
+    games.sort(key=lambda row: row["week"], reverse=True)
     if not games:
         return {"status": "no_market_data", "player": player, "season": season}
     values = [game["value"] for game in games]
@@ -125,7 +126,8 @@ def analyze_weekly(rows: list[dict], player: str, market: str, line: float,
     return {
         "status": "ok", "player": player, "player_id": next(iter(ids)),
         "market": market, "line": line, "season": season,
-        "sample_size": len(values), "games": games[:25],\n        "latest_week": games[0]["week"],
+        "sample_size": len(values), "games": games[:25],
+        "latest_week": games[0]["week"],
         "average": round(mean(values), 2), "median": round(median(values), 2),
         "last_5_average": round(mean(recent), 2),
         "last_5_values": recent,
