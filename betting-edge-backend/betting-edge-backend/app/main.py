@@ -8,6 +8,7 @@ from .providers.odds_api import OddsApiProvider, OddsApiError
 from .providers.research import ResearchProvider
 from .normalizer import normalize_odds
 from .calculations import implied_probability, american_odds, edge
+from .nfl_venues import nfl_home_venue
 
 
 # =========================================================
@@ -229,12 +230,21 @@ async def research_game(
     """
 
     try:
+        venue = nfl_home_venue(home_team)
+        # The NFL venue table is used only when the request is for NFL.
+        # Explicit coordinates take precedence (e.g. international games).
+        if latitude is None and longitude is None and venue:
+            if venue["outdoor"]:
+                latitude, longitude = venue["latitude"], venue["longitude"]
         data = await research.research_game(
             home_team=home_team,
             away_team=away_team,
             latitude=latitude,
             longitude=longitude,
         )
+        data["venue"] = venue
+        if venue and not venue["outdoor"] and latitude is None:
+            data["weather_note"] = "Indoor/roofed venue; outdoor weather is not representative of playing conditions."
 
         return {
             "source": "public-current-sources",
