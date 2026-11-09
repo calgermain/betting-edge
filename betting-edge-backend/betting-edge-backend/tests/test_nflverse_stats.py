@@ -28,3 +28,16 @@ def test_ambiguous_name_is_not_guessed():
 def test_missing_player_and_market():
     assert analyze_weekly([row(1)], "Missing", "receiving_yards", 40, 2026)["status"] == "not_found"
     assert analyze_weekly([row(1, value="")], "Sample Receiver", "receiving_yards", 40, 2026)["status"] == "no_market_data"
+
+
+def test_player_suffix_and_punctuation_matching():
+    result = analyze_weekly([row(1, name="John Smith Jr.")],
+                            "John Smith", "receiving_yards", 50, 2026)
+    assert result["status"] == "ok"
+
+
+def test_suffix_normalization_does_not_guess_duplicate_players():
+    rows = [row(1, name="John Smith Jr.", player_id="a"),
+            row(1, name="John Smith", player_id="b")]
+    result = analyze_weekly(rows, "John Smith", "receiving_yards", 50, 2026)
+    assert result["status"] == "ambiguous_player"
