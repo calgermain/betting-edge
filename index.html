@@ -2087,7 +2087,8 @@ function renderResearch(){
   );
 
   renderWeather(
-    data.weather
+    data.weather,
+    data.venue
   );
 
   const injuryCount =
@@ -2226,12 +2227,18 @@ function renderResearchList(
 }
 
 
-function renderWeather(weather){
+function renderWeather(weather, venue){
 
   const box =
     document.getElementById(
       "weatherBox"
     );
+
+  if(venue && venue.outdoor === false){
+    box.innerHTML = '<div class="research-empty">Indoor / roofed stadium — outdoor weather does not directly affect play. Roof status should be checked for retractable-roof venues.</div>';
+    document.getElementById("weatherStatus").textContent = "INDOOR VENUE";
+    return;
+  }
 
   if(
     !weather ||
@@ -3160,10 +3167,8 @@ function renderAlerts(){
       ? "MONITOR"
       : "NO REPORTS";
 
-  let weatherStatus =
-    weather
-      ? "REVIEW"
-      : "UNAVAILABLE";
+  const indoor = data?.venue?.outdoor === false;
+  let weatherStatus = indoor ? "INDOOR" : (weather && !weather.error ? "REVIEW" : "UNAVAILABLE");
 
   document.getElementById(
     "alerts"
@@ -3220,9 +3225,9 @@ function renderAlerts(){
 
         <div class="sub">
           ${
-            weather
-              ? "Current forecast available."
-              : "Weather unavailable."
+            indoor
+              ? "Indoor / roofed stadium; check roof status if retractable."
+              : (weather && !weather.error ? "Current conditions available." : "Weather unavailable.")
           }
         </div>
 
