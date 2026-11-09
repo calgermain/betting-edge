@@ -76,7 +76,7 @@ async def weekly_rows(season: int) -> tuple[list[dict], dict]:
             entry = (time.monotonic(), rows, datetime.now(timezone.utc).isoformat())
             _cache[season] = entry
             return rows, _metadata(entry, False)
-        except (httpx.HTTPError, UnicodeError, csv.Error) as exc:
+        except (httpx.HTTPError, UnicodeError, csv.Error, StatsUnavailable) as exc:
             if cached:
                 return cached[1], _metadata(cached, True)
             raise StatsUnavailable("NFL weekly stats source unavailable") from exc
@@ -95,6 +95,8 @@ def analyze_weekly(rows: list[dict], player: str, market: str, line: float,
                    season: int, player_id: str | None = None) -> dict:
     if market not in MARKETS:
         raise ValueError("Unsupported player market")
+    if not math.isfinite(line) or line < 0:
+        raise ValueError("Invalid prop line")
     matching = [
         row for row in rows
         if (row.get("player_id") == player_id if player_id
