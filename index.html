@@ -2512,9 +2512,11 @@ async function loadNflPlayerStats(){
         : "No matching regular-season game logs found for this player and season.";
       return;
     }
-    status.textContent="HISTORICAL";
+    const freshness=response.freshness || {};
+    status.textContent=freshness.stale ? "STALE DATA" : "HISTORICAL";
     const summary=[
       ["Games",data.sample_size],
+      ["Latest week",data.latest_week || "—"],
       ["Season avg",data.average],
       ["Last 5 avg",data.last_5_average],
       ["Over / Under / Push",data.over_count+" / "+data.under_count+" / "+data.push_count],
@@ -2522,7 +2524,12 @@ async function loadNflPlayerStats(){
     ];
     const summaries=summary.map(([label,value])=>'<div class="kv"><span class="muted">'+escapeHtml(label)+'</span><div class="weather-value">'+escapeHtml(value)+'</div></div>').join("");
     const rows=(data.games||[]).map(game=>'<tr><td>Week '+escapeHtml(game.week)+'</td><td>'+escapeHtml(game.opponent||"—")+'</td><td>'+escapeHtml(game.value)+'</td></tr>').join("");
-    results.innerHTML='<div class="weather-box">'+summaries+'</div>'+
+    const sourceNote=freshness.fetched_at
+      ? 'Dataset fetched '+new Date(freshness.fetched_at).toLocaleString()+
+        (freshness.stale ? ' — STALE FALLBACK: upstream source unavailable.' : '.')
+      : 'Dataset retrieval time unavailable.';
+    results.innerHTML='<div class="sub" style="margin-bottom:10px">'+escapeHtml(sourceNote)+'</div>'+
+      '<div class="weather-box">'+summaries+'</div>'+
       '<div style="overflow-x:auto;margin-top:12px"><table style="width:100%;text-align:left"><thead><tr><th>Game</th><th>Opponent</th><th>Stat</th></tr></thead><tbody>'+rows+'</tbody></table></div>'+
       '<div class="sub" style="margin-top:10px">Historical results only — not a projected probability or verified betting edge.</div>';
   }catch(error){
