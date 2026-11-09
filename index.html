@@ -865,6 +865,55 @@ table{
 
 
 <!-- =====================================================
+     NFL PLAYER STATS
+===================================================== -->
+<div class="section" id="nflPlayerSection">
+  <div class="section-head">
+    <div>
+      <div class="eyebrow">NFL / Historical player research</div>
+      <h2>Player Performance</h2>
+    </div>
+    <span class="pill y" id="playerStatsStatus">NOT LOADED</span>
+  </div>
+  <div class="card">
+    <div class="sub" style="margin-bottom:14px">
+      Historical regular-season game logs from nflverse. Hit rates are descriptive, not predictions.
+      No sportsbook API credits are used by this lookup.
+    </div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:end">
+      <label style="flex:2;min-width:180px">Player name
+        <input id="playerStatsName" type="text" placeholder="e.g. Justin Jefferson" maxlength="120" style="width:100%"/>
+      </label>
+      <label style="flex:1;min-width:160px">Stat
+        <select id="playerStatsMarket" style="width:100%">
+          <option value="receiving_yards">Receiving yards</option>
+          <option value="receptions">Receptions</option>
+          <option value="rushing_yards">Rushing yards</option>
+          <option value="passing_yards">Passing yards</option>
+          <option value="passing_tds">Passing TDs</option>
+          <option value="rushing_tds">Rushing TDs</option>
+          <option value="receiving_tds">Receiving TDs</option>
+        </select>
+      </label>
+      <label style="flex:1;min-width:90px">Prop line
+        <input id="playerStatsLine" type="number" min="0" step="0.5" value="65.5" style="width:100%"/>
+      </label>
+      <label style="flex:1;min-width:90px">Season
+        <input id="playerStatsSeason" type="number" min="1999" max="2100" value="2026" style="width:100%"/>
+      </label>
+      <button class="btn" id="playerStatsButton" onclick="loadNflPlayerStats()">Analyze Player</button>
+    </div>
+    <div id="playerStatsResults" class="research-empty" style="margin-top:16px">
+      Enter a player and line to review historical performance.
+    </div>
+    <div class="sub" style="margin-top:12px">
+      Data attribution: <a href="https://github.com/nflverse/nflverse-data" target="_blank" rel="noopener noreferrer">nflverse</a>.
+      Player identity and line must be checked against your sportsbook.
+    </div>
+  </div>
+</div>
+
+<!-- =====================================================
      WEATHER
 ===================================================== -->
 
@@ -2428,6 +2477,58 @@ function weatherDescription(code){
 
 }
 
+
+
+// Historical NFL player research is deliberately separate from parlay odds.
+async function loadNflPlayerStats(){
+  const status=document.getElementById("playerStatsStatus");
+  const results=document.getElementById("playerStatsResults");
+  const button=document.getElementById("playerStatsButton");
+  const player=document.getElementById("playerStatsName").value.trim();
+  const market=document.getElementById("playerStatsMarket").value;
+  const line=Number(document.getElementById("playerStatsLine").value);
+  const season=Number(document.getElementById("playerStatsSeason").value);
+  if(!player || !Number.isFinite(line) || line<0 ||
+     !Number.isInteger(season) || season<1999 || season>new Date().getFullYear()){
+    status.textContent="CHECK INPUT";
+    results.textContent="Enter a player name, valid prop line and season.";
+    return;
+  }
+  const params=new URLSearchParams({player,market,line:String(line),season:String(season)});
+  status.textContent="LOADING";
+  button.disabled=true;
+  results.textContent="Retrieving weekly game logs...";
+  try{
+    const response=await api("/api/v1/nfl/player-stats?"+params.toString());
+    const data=response.data || {};
+    if(data.status!=="ok"){
+      status.textContent="NO MATCH";
+      results.textContent=data.status==="ambiguous_player"
+        ? "Multiple players have this name. Use a more specific identity; player IDs: "+(data.player_ids||[]).join(", ")
+        : "No matching regular-season game logs found for this player and season.";
+      return;
+    }
+    status.textContent="HISTORICAL";
+    const summary=[
+      ["Games",data.sample_size],
+      ["Season avg",data.average],
+      ["Last 5 avg",data.last_5_average],
+      ["Over / Under / Push",data.over_count+" / "+data.under_count+" / "+data.push_count],
+      ["Historical over rate",Math.round(data.historical_over_rate*100)+"%"]
+    ];
+    const summaries=summary.map(([label,value])=>'<div class="kv"><span class="muted">'+escapeHtml(label)+'</span><div class="weather-value">'+escapeHtml(value)+'</div></div>').join("");
+    const rows=(data.games||[]).map(game=>'<tr><td>Week '+escapeHtml(game.week)+'</td><td>'+escapeHtml(game.opponent||"—")+'</td><td>'+escapeHtml(game.value)+'</td></tr>').join("");
+    results.innerHTML='<div class="weather-box">'+summaries+'</div>'+
+      '<div style="overflow-x:auto;margin-top:12px"><table style="width:100%;text-align:left"><thead><tr><th>Game</th><th>Opponent</th><th>Stat</th></tr></thead><tbody>'+rows+'</tbody></table></div>'+
+      '<div class="sub" style="margin-top:10px">Historical results only — not a projected probability or verified betting edge.</div>';
+  }catch(error){
+    status.textContent="UNAVAILABLE";
+    results.textContent="Player statistics could not be loaded. This may be a source or backend issue.";
+    console.error("NFL player stats error:",error);
+  }finally{
+    button.disabled=false;
+  }
+}
 
 /* =========================================================
    RESEARCH STATUS
