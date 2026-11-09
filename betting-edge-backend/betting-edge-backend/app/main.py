@@ -9,6 +9,7 @@ from .providers.research import ResearchProvider
 from .normalizer import normalize_odds
 from .calculations import implied_probability, american_odds, edge
 from .nfl_venues import nfl_home_venue
+from .player_trends import PlayerTrendRequest, analyze_player_trend
 
 
 # =========================================================
@@ -374,3 +375,12 @@ async def calc_edge(
             estimated_probability
         ),
     }
+
+
+# =========================================================
+# NFL PLAYER TRENDS — CALLER-SUPPLIED VERIFIED GAME LOGS
+# =========================================================
+
+@app.post("/api/v1/nfl/player-trends")
+async def nfl_player_trends(request: PlayerTrendRequest):
+    return {"source": "caller-supplied-game-logs", "data": analyze_player_trend(request)}
