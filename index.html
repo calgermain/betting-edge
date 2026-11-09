@@ -1866,6 +1866,9 @@ function processStandardOdds(event){
                       description:
                         outcome.description,
 
+                      playerName:
+                        outcome.description || "",
+
                       lastUpdate:
                         market.last_update
 
@@ -2810,6 +2813,38 @@ function renderBets(){
 }
 
 
+function propResearchMarket(marketKey){
+  const map={
+    player_pass_yds:"passing_yards",
+    player_rush_yds:"rushing_yards",
+    player_reception_yds:"receiving_yards",
+    player_receptions:"receptions",
+    player_pass_tds:"passing_tds",
+    player_rush_tds:"rushing_tds",
+    player_reception_tds:"receiving_tds"
+  };
+  return map[marketKey] || null;
+}
+
+function researchSelectedProp(encodedId){
+  const bet=bets.find(item=>item.id===decodeURIComponent(encodedId));
+  if(!bet || bet.type!=="Player Prop") return;
+  const market=propResearchMarket(bet.marketKey);
+  const name=(bet.playerName || bet.description || "").trim();
+  if(!market || !name || !Number.isFinite(Number(bet.point))) return;
+  document.getElementById("playerStatsName").value=name;
+  document.getElementById("playerStatsMarket").value=market;
+  document.getElementById("playerStatsLine").value=String(bet.point);
+  const kickoff=currentEvent()?.commence_time;
+  if(kickoff){
+    const year=new Date(kickoff).getUTCFullYear();
+    const month=new Date(kickoff).getUTCMonth();
+    document.getElementById("playerStatsSeason").value=String(month<2?year-1:year);
+  }
+  document.getElementById("nflPlayerSection").scrollIntoView({behavior:"smooth",block:"start"});
+  loadNflPlayerStats();
+}
+
 function renderBetRow(bet){
 
   const impliedPct =
@@ -2832,6 +2867,10 @@ function renderBetRow(bet){
         <div class="sub">
           ${escapeHtml(bet.type)}
         </div>
+        ${bet.type==="Player Prop" && propResearchMarket(bet.marketKey) &&
+           (bet.playerName || bet.description) && bet.point !== undefined && bet.point !== null
+          ? '<button class="btn" onclick="event.stopPropagation();researchSelectedProp(\''+encodeURIComponent(bet.id)+'\')">Research Player</button>'
+          : ""}
 
       </td>
 
