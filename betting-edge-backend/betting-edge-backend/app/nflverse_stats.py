@@ -134,7 +134,7 @@ def analyze_weekly(rows: list[dict], player: str, market: str, line: float,
     return {
         "status": "ok", "player": player, "player_id": next(iter(ids)),
         "market": market, "line": line, "season": season,
-        "sample_size": len(values), "games": games[:25],
+        "sample_size": len(values), "games": games,
         "latest_week": games[0]["week"],
         "average": round(mean(values), 2), "median": round(median(values), 2),
         "last_5_average": round(mean(recent), 2),

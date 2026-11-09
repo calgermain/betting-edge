@@ -41,3 +41,10 @@ def test_suffix_normalization_does_not_guess_duplicate_players():
             row(1, name="John Smith", player_id="b")]
     result = analyze_weekly(rows, "John Smith", "receiving_yards", 50, 2026)
     assert result["status"] == "ambiguous_player"
+
+
+def test_full_season_history_is_available_for_backtesting():
+    rows = [row(week, value=str(week)) for week in range(1, 29)]
+    result = analyze_weekly(rows, "Sample Receiver", "receiving_yards", 10, 2026)
+    assert result["sample_size"] == 28
+    assert len(result["games"]) == 28

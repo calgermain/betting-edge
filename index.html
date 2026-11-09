@@ -901,10 +901,20 @@ table{
       <label style="flex:1;min-width:90px">Season
         <input id="playerStatsSeason" type="number" min="1999" max="2100" value="2026" style="width:100%"/>
       </label>
+      <label style="flex:1;min-width:110px">Opponent (optional)
+        <input id="playerStatsOpponent" type="text" placeholder="e.g. MIN" maxlength="5" style="width:100%"/>
+      </label>
       <button class="btn" id="playerStatsButton" onclick="loadNflPlayerStats()">Analyze Player</button>
     </div>
     <div id="playerStatsResults" class="research-empty" style="margin-top:16px">
       Enter a player and line to review historical performance.
+    </div>
+    <div class="card" style="margin-top:18px">
+      <div class="eyebrow">NFL / Season-wide model comparison</div>
+      <h3>Which projection model works better?</h3>
+      <div class="sub" style="margin-bottom:10px">Compare historical prediction errors across players in one season. Lower MAE is better; this does not establish betting profitability.</div>
+      <button class="btn" id="populationBacktestButton" onclick="loadPopulationBacktest()">Compare Models</button>
+      <div id="populationBacktestResults" class="sub" style="margin-top:12px">Uses the selected stat and season above.</div>
     </div>
     <div class="sub" style="margin-top:12px">
       Data attribution: <a href="https://github.com/nflverse/nflverse-data" target="_blank" rel="noopener noreferrer">nflverse</a>.
@@ -2490,6 +2500,51 @@ function weatherDescription(code){
 
 
 // Historical NFL player research is deliberately separate from parlay odds.
+async function loadPopulationBacktest(){
+  const button=document.getElementById("populationBacktestButton");
+  const results=document.getElementById("populationBacktestResults");
+  const market=document.getElementById("playerStatsMarket").value;
+  const season=Number(document.getElementById("playerStatsSeason").value);
+  if(!Number.isInteger(season) || season<1999 || season>new Date().getFullYear()){
+    results.textContent="Choose a valid season.";
+    return;
+  }
+  button.disabled=true;
+  results.textContent="Evaluating historical player-games...";
+  try{
+    const response=await api("/api/v1/nfl/model-backtest?"+new URLSearchParams({market,season:String(season)}));
+    const data=response.data || {};
+    if(data.status!=="evaluated"){
+      results.textContent="Not enough player-game history to compare models for this season and stat.";
+      return;
+    }
+    const rows=[
+      ["Weighted (60/40)",data.pooled_mae.weighted],
+      ["Season average",data.pooled_mae.season_mean],
+      ["Last five average",data.pooled_mae.last_five_mean]
+    ];
+    const best=data.lowest_mae_model
+      ? 'Lowest historical MAE: '+({weighted:'Weighted (60/40)',season_mean:'Season average',last_five_mean:'Last five average'}[data.lowest_mae_model]||data.lowest_mae_model)+'.'
+      : 'Multiple models tied for lowest historical MAE.';
+    const improvement=data.weighted_mae_improvement_vs_season;
+    const comparison=improvement>0
+      ? 'Weighted model reduced MAE vs season average by '+improvement+'.'
+      : improvement<0
+        ? 'Weighted model increased MAE vs season average by '+Math.abs(improvement).toFixed(3)+'.'
+        : 'Weighted model did not improve on season-average MAE.';
+    results.innerHTML='<div class="sub">Evaluated '+escapeHtml(data.evaluated_players)+' players and '+escapeHtml(data.evaluated_player_games)+' player-games.'+
+      (response.freshness?.stale ? ' Warning: cached source data is stale.' : '')+'</div>'+
+      '<div style="overflow-x:auto;margin-top:10px"><table style="width:100%;text-align:left"><thead><tr><th>Model</th><th>MAE (lower is better)</th></tr></thead><tbody>'+
+      rows.map(([name,mae])=>'<tr><td>'+escapeHtml(name)+'</td><td>'+escapeHtml(mae)+'</td></tr>').join("")+
+      '</tbody></table></div><div class="sub" style="margin-top:10px">'+escapeHtml(best)+' '+escapeHtml(comparison)+'</div><div class="sub" style="margin-top:10px">'+escapeHtml(data.limitations)+'</div>';
+  }catch(error){
+    results.textContent="Model comparison unavailable. Check backend availability and the selected season.";
+    console.error("NFL model backtest error:",error);
+  }finally{
+    button.disabled=false;
+  }
+}
+
 async function loadNflPlayerStats(){
   const status=document.getElementById("playerStatsStatus");
   const results=document.getElementById("playerStatsResults");
@@ -2505,7 +2560,14 @@ async function loadNflPlayerStats(){
     results.textContent="Enter a player name, valid prop line and season.";
     return;
   }
+  const opponent=document.getElementById("playerStatsOpponent").value.trim().toUpperCase();
+  if(opponent && !/^[A-Z]{2,5}$/.test(opponent)){
+    status.textContent="CHECK INPUT";
+    results.textContent="Enter a 2–5 letter NFL opponent abbreviation, such as MIN.";
+    return;
+  }
   const params=new URLSearchParams({player,market,line:String(line),season:String(season)});
+  if(opponent) params.set("opponent",opponent);
   status.textContent="LOADING";
   button.disabled=true;
   results.textContent="Retrieving weekly game logs...";
@@ -2521,6 +2583,9 @@ async function loadNflPlayerStats(){
     }
     const freshness=response.freshness || {};
     status.textContent=freshness.stale ? "STALE DATA" : "HISTORICAL";
+    const projection=response.projection || {};
+    const backtest=response.backtest || {};
+    const matchup=response.matchup || {};
     const summary=[
       ["Games",data.sample_size],
       ["Latest week",data.latest_week || "—"],
@@ -2535,10 +2600,44 @@ async function loadNflPlayerStats(){
       ? 'Dataset fetched '+new Date(freshness.fetched_at).toLocaleString()+
         (freshness.stale ? ' — STALE FALLBACK: upstream source unavailable.' : '.')
       : 'Dataset retrieval time unavailable.';
+    const projectionHtml=projection.status==="exploratory"
+      ? '<div class="card" style="margin-top:12px"><div class="eyebrow">EXPERIMENTAL PROJECTION — NOT A BETTING EDGE</div>'+
+        '<div class="weather-box">'+[
+          ["Weighted baseline",projection.projected_stat],
+          ["Difference vs line",projection.difference_from_line],
+          ["Recent vs season",projection.recent_vs_season],
+          ["Historical std. dev.",projection.historical_std_dev]
+        ].map(([label,value])=>'<div class="kv"><span class="muted">'+escapeHtml(label)+'</span><div class="weather-value">'+escapeHtml(value)+'</div></div>').join("")+
+        '</div><div class="sub">'+escapeHtml(projection.warning)+'</div></div>'
+      : '<div class="sub" style="margin-top:10px">Projection unavailable: fewer than 3 games.</div>';
+    const backtestHtml=backtest.status==="evaluated"
+      ? '<div class="card" style="margin-top:12px"><div class="eyebrow">WALK-FORWARD BACKTEST — LOWER MAE IS BETTER</div>'+
+        '<div class="weather-box">'+[
+          ["Evaluated games",backtest.evaluated_games],
+          ["Weighted MAE",backtest.mae.weighted],
+          ["Season avg MAE",backtest.mae.season_mean],
+          ["Last 5 MAE",backtest.mae.last_five_mean]
+        ].map(([label,value])=>'<div class="kv"><span class="muted">'+escapeHtml(label)+'</span><div class="weather-value">'+escapeHtml(value)+'</div></div>').join("")+
+        '</div><div class="sub">'+escapeHtml(backtest.limitations)+'</div></div>'
+      : '<div class="sub" style="margin-top:10px">Backtest requires at least 4 recorded games.</div>';
+    const matchupHtml=opponent
+      ? matchup.status==="descriptive"
+        ? '<div class="card" style="margin-top:12px"><div class="eyebrow">OPPONENT DEFENSIVE CONTEXT — DESCRIPTIVE ONLY</div>'+
+          '<div class="weather-box">'+[
+            ["Opponent",matchup.opponent],
+            ["Position",matchup.position],
+            ["Weeks observed",matchup.sample_weeks],
+            ["Opponent allowed / week",matchup.opponent_allowed_per_week],
+            ["League allowed / week",matchup.league_allowed_per_week],
+            ["Allowed ratio",matchup.allowed_ratio]
+          ].map(([label,value])=>'<div class="kv"><span class="muted">'+escapeHtml(label)+'</span><div class="weather-value">'+escapeHtml(value)+'</div></div>').join("")+
+          '</div><div class="sub">'+escapeHtml(matchup.warning)+'</div></div>'
+        : '<div class="sub" style="margin-top:10px">Insufficient opponent defensive data for this season and position.</div>'
+      : '';
     results.innerHTML='<div class="sub" style="margin-bottom:10px">'+escapeHtml(sourceNote)+'</div>'+
       '<div class="weather-box">'+summaries+'</div>'+
       '<div style="overflow-x:auto;margin-top:12px"><table style="width:100%;text-align:left"><thead><tr><th>Game</th><th>Opponent</th><th>Stat</th></tr></thead><tbody>'+rows+'</tbody></table></div>'+
-      '<div class="sub" style="margin-top:10px">Historical results only — not a projected probability or verified betting edge.</div>';
+      '<div class="sub" style="margin-top:10px">Historical results only — not a projected probability or verified betting edge.</div>'+projectionHtml+backtestHtml+matchupHtml;
   }catch(error){
     status.textContent="UNAVAILABLE";
     results.textContent="Player statistics could not be loaded. This may be a source or backend issue.";
