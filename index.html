@@ -2520,11 +2520,20 @@ async function loadPopulationBacktest(){
       ["Season average",data.pooled_mae.season_mean],
       ["Last five average",data.pooled_mae.last_five_mean]
     ];
+    const best=data.lowest_mae_model
+      ? 'Lowest historical MAE: '+({weighted:'Weighted (60/40)',season_mean:'Season average',last_five_mean:'Last five average'}[data.lowest_mae_model]||data.lowest_mae_model)+'.'
+      : 'Multiple models tied for lowest historical MAE.';
+    const improvement=data.weighted_mae_improvement_vs_season;
+    const comparison=improvement>0
+      ? 'Weighted model reduced MAE vs season average by '+improvement+'.'
+      : improvement<0
+        ? 'Weighted model increased MAE vs season average by '+Math.abs(improvement).toFixed(3)+'.'
+        : 'Weighted model did not improve on season-average MAE.';
     results.innerHTML='<div class="sub">Evaluated '+escapeHtml(data.evaluated_players)+' players and '+escapeHtml(data.evaluated_player_games)+' player-games.'+
       (response.freshness?.stale ? ' Warning: cached source data is stale.' : '')+'</div>'+
       '<div style="overflow-x:auto;margin-top:10px"><table style="width:100%;text-align:left"><thead><tr><th>Model</th><th>MAE (lower is better)</th></tr></thead><tbody>'+
       rows.map(([name,mae])=>'<tr><td>'+escapeHtml(name)+'</td><td>'+escapeHtml(mae)+'</td></tr>').join("")+
-      '</tbody></table></div><div class="sub" style="margin-top:10px">'+escapeHtml(data.limitations)+'</div>';
+      '</tbody></table></div><div class="sub" style="margin-top:10px">'+escapeHtml(best)+' '+escapeHtml(comparison)+'</div><div class="sub" style="margin-top:10px">'+escapeHtml(data.limitations)+'</div>';
   }catch(error){
     results.textContent="Model comparison unavailable. Check backend availability and the selected season.";
     console.error("NFL model backtest error:",error);
