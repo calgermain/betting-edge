@@ -10,6 +10,8 @@ from .normalizer import normalize_odds
 from .calculations import implied_probability, american_odds, edge
 from .nfl_venues import nfl_home_venue
 from .player_trends import PlayerTrendRequest, analyze_player_trend
+from .player_csv import analyze_csv, PlayerCsvError
+from pydantic import BaseModel, Field
 
 
 # =========================================================
@@ -384,3 +386,19 @@ async def calc_edge(
 @app.post("/api/v1/nfl/player-trends")
 async def nfl_player_trends(request: PlayerTrendRequest):
     return {"source": "caller-supplied-game-logs", "data": analyze_player_trend(request)}
+
+
+class NflPlayerCsvRequest(BaseModel):
+    player: str = Field(min_length=1, max_length=120)
+    market: str
+    line: float = Field(ge=0, allow_inf_nan=False)
+    csv_text: str = Field(min_length=1, max_length=32_000)
+
+
+@app.post("/api/v1/nfl/player-trends/csv")
+async def nfl_player_trends_csv(request: NflPlayerCsvRequest):
+    try:
+        result = analyze_csv(request.player, request.market, request.line, request.csv_text)
+    except PlayerCsvError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return {"source": "caller-supplied-csv", "data": result}
