@@ -73,3 +73,22 @@ near kickoff when it falls within the forecast horizon. Missing, past and
 out-of-range forecasts have explicit status values. Indoor/roofed venues
 suppress outdoor weather. Neutral-site games and retractable-roof decisions
 still require explicit venue verification.
+
+
+## Automatic NFL player game logs (nflverse)
+
+`GET /api/v1/nfl/player-stats?player=Example%20Receiver&market=receiving_yards&line=65.5&season=2026`
+
+Fetches the public nflverse `stats_player_week_{season}.csv` release, caches
+the season CSV in memory for six hours, and calculates descriptive statistics
+from regular-season player-week records. Subsequent player requests reuse the
+cached season data. No Odds API request is made. This is an independent,
+community-maintained source and its availability/freshness can vary.
+
+Name matching is exact after basic punctuation normalization. If two players
+share the same name, the API returns `ambiguous_player` and player IDs
+rather than guessing. Supply `player_id` to select a specific player.
+The response includes weekly values and the upstream source URL, not a
+predictive probability. Player stats are not yet connected to the frontend UI.
+
+Data: nflverse (CC BY 4.0). Attribution: https://github.com/nflverse/nflverse-data
