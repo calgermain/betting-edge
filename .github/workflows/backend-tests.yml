@@ -24,3 +24,33 @@ jobs:
         run: python -m compileall -q app tests
       - name: Run offline tests
         run: python -m pytest -q
+      - name: Check frontend JavaScript syntax
+        working-directory: .
+        run: |
+          python - <<'PY'
+          from html.parser import HTMLParser
+          from pathlib import Path
+          class Scripts(HTMLParser):
+              def __init__(self):
+                  super().__init__()
+                  self.inside = False
+                  self.parts = []
+                  self.scripts = []
+              def handle_starttag(self, tag, attrs):
+                  if tag == 'script':
+                      attributes = dict(attrs)
+                      self.inside = not attributes.get('src') and attributes.get('type', 'text/javascript') in ('text/javascript', 'module', '')
+                      self.parts = []
+              def handle_data(self, data):
+                  if self.inside:
+                      self.parts.append(data)
+              def handle_endtag(self, tag):
+                  if tag == 'script' and self.inside:
+                      self.scripts.append(''.join(self.parts))
+                      self.inside = False
+          parser = Scripts()
+          parser.feed(Path('index.html').read_text(encoding='utf-8'))
+          assert parser.scripts, 'No inline JavaScript found'
+          Path('/tmp/betting-edge-inline.js').write_text('\n'.join(parser.scripts), encoding='utf-8')
+          PY
+          node --check /tmp/betting-edge-inline.js
