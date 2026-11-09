@@ -419,8 +419,8 @@ async def nfl_player_stats(
     if market not in MARKETS:
         raise HTTPException(status_code=422, detail="Unsupported NFL player market.")
     try:
-        rows = await weekly_rows(season)
-        return {"source": "nflverse", "data": analyze_weekly(
+        rows, freshness = await weekly_rows(season)
+        return {"source": "nflverse", "freshness": freshness, "data": analyze_weekly(
             rows, player, market, line, season, player_id
         )}
     except StatsUnavailable as exc:
