@@ -15,6 +15,7 @@ from .nflverse_stats import weekly_rows, analyze_weekly, StatsUnavailable, MARKE
 from .nfl_projection import baseline
 from .nfl_backtest import evaluate, evaluate_population
 from .nfl_matchups import defensive_context
+from .parlay_research import ResearchRequest, research_candidates
 from pydantic import BaseModel, Field
 
 
@@ -458,5 +459,17 @@ async def nfl_model_backtest(
         rows, freshness = await weekly_rows(season)
         return {"source": "nflverse", "freshness": freshness,
                 "data": evaluate_population(rows, market, season)}
+    except StatsUnavailable as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+
+@app.post("/api/v1/nfl/parlay-research")
+async def nfl_parlay_research(request: ResearchRequest):
+    """One cached nflverse season download for a batch of prop candidates."""
+    if request.season > datetime.now(timezone.utc).year:
+        raise HTTPException(status_code=422, detail="Season cannot be in the future.")
+    try:
+        rows, freshness = await weekly_rows(request.season)
+        return {"freshness": freshness, **research_candidates(rows, request)}
     except StatsUnavailable as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc

@@ -1053,6 +1053,12 @@ table{
 
 </div>
 
+<div class="card" style="margin-bottom:14px">
+  <div class="eyebrow">Research-ranked suggestions</div>
+  <p class="sub">Build 2-, 3-, and 4-leg candidate combinations using historical NFL player evidence. These are not calibrated probabilities or sportsbook quotes. Same-player combinations are excluded; other correlations remain unmodeled.</p>
+  <button class="btn" id="researchParlayButton" onclick="researchParlays()">Build research-ranked parlays</button>
+  <div id="researchParlayResults" style="margin-top:12px" aria-live="polite">Load a game's player prop markets, then click to analyze.</div>
+</div>
 <div
   class="parlays"
   id="parlays"
@@ -3210,6 +3216,85 @@ function buildParlay(legs){
 
 }
 
+
+async function researchParlays(){
+  const button=document.getElementById("researchParlayButton");
+  const output=document.getElementById("researchParlayResults");
+  const event=currentEvent();
+  if(!event || currentSport()!=="americanfootball_nfl"){
+    output.textContent="Select an NFL game and load player props first.";
+    return;
+  }
+  const year=new Date(event.commence_time).getUTCFullYear();
+  const season=new Date(event.commence_time).getUTCMonth()<2?year-1:year;
+  const all=visibleBets().filter(b=>b.type==="Player Prop" &&
+    propResearchMarket(b.marketKey) && b.description &&
+    Number.isFinite(Number(b.point)) &&
+    ["Over","Under"].includes(b.rawName));
+  // Research one quote per player, side, and market; avoid duplicate bookmakers.
+  const unique=new Map();
+  for(const b of all){
+    const key=[b.description.toLowerCase(),b.marketKey,b.rawName,b.point].join("|");
+    if(!unique.has(key)) unique.set(key,b);
+  }
+  const candidates=[...unique.values()].slice(0,40);
+  if(!candidates.length){
+    output.textContent="No supported player props loaded. Load player prop markets to generate research-ranked suggestions.";
+    return;
+  }
+  button.disabled=true;
+  output.textContent="Evaluating "+candidates.length+" player prop candidates using historical NFL statistics...";
+  try{
+    const payload=await fetch(API_BASE+"/api/v1/nfl/parlay-research",{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({season,candidates:candidates.map(b=>({
+        id:b.id,player:b.description,market:propResearchMarket(b.marketKey),
+        line:Number(b.point),side:b.rawName
+      }))})
+    });
+    if(!payload.ok) throw new Error("Research API returned "+payload.status);
+    const response=await payload.json();
+    const evidence=new Map((response.results||[]).map(r=>[r.id,r]));
+    const ranked=candidates.filter(b=>evidence.get(b.id)?.status==="researched")
+      .map(b=>({bet:b,research:evidence.get(b.id)}))
+      .filter(x=>x.research.score>0)
+      .sort((a,b)=>b.research.score-a.research.score);
+    if(ranked.length<2){
+      output.textContent="Insufficient positive directional evidence for two independent-player legs. No suggested parlay generated; try another game or market.";
+      return;
+    }
+    const profiles=[["Conservative",2],["Balanced",3],["Aggressive",4]];
+    const cards=profiles.map(([label,count])=>{
+      const picked=[],players=new Set(),markets=new Set();
+      for(const entry of ranked){
+        const player=entry.bet.description.toLowerCase();
+        const key=player+"|"+entry.bet.marketKey;
+        if(players.has(player)||markets.has(key)) continue;
+        picked.push(entry);players.add(player);markets.add(key);
+        if(picked.length===count) break;
+      }
+      if(picked.length<count) return "";
+      return '<div class="card parlay"><div class="eyebrow">'+label+' / '+count+' legs</div>'+
+        '<h3>RESEARCH-RANKED CANDIDATES</h3><div class="legs">'+picked.map(x=>
+          '<div class="leg"><span>'+escapeHtml(x.bet.description)+' — '+escapeHtml(x.bet.rawName)+' '+
+          escapeHtml(x.bet.point)+' ('+escapeHtml(x.bet.book)+', '+fmtOdds(x.bet.odds)+')'+
+          '<div class="sub">Projection: '+escapeHtml(x.research.projected_stat)+
+          ' · Historical hit rate: '+Math.round(x.research.historical_hit_rate*100)+
+          '% · Walk-forward MAE: '+escapeHtml(x.research.walk_forward_mae)+
+          ' · Evidence score: '+escapeHtml(x.research.score)+'</div></span></div>'
+        ).join("")+'</div><div class="sub">Research ranking only. No joint win probability, fair odds, or validated betting edge. Verify sportsbook availability, injuries and correlations.</div></div>';
+    }).filter(Boolean);
+    output.innerHTML=cards.length?cards.join("")+
+      '<div class="sub">Based on '+ranked.length+' positive-evidence candidates from '+candidates.length+
+      ' researched quotes. Historical statistics can be stale and do not account for all lineup changes.</div>'
+      :"Not enough distinct players and markets for research-ranked parlays.";
+  }catch(error){
+    output.textContent="Unable to complete parlay research: "+error.message;
+  }finally{
+    button.disabled=false;
+  }
+}
 
 function renderParlays(){
 
