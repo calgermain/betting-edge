@@ -1,6 +1,11 @@
 name: NFL data feed smoke test
 
 on:
+  pull_request:
+    paths:
+      - 'betting-edge-backend/betting-edge-backend/app/**'
+      - 'betting-edge-backend/betting-edge-backend/tests/**'
+      - '.github/workflows/nflverse-smoke.yml'
   workflow_dispatch:
 
 jobs:
