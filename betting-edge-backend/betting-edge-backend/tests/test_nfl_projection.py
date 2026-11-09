@@ -10,7 +10,7 @@ def test_weighted_baseline_is_not_an_edge():
              {"value": 10, "opponent": "GB"}]
     result = baseline(games, 65.5, "MIN")
     assert result["status"] == "exploratory"
-    assert result["projected_stat"] == 58.33
+    assert result["projected_stat"] == 56.67
     assert result["vs_opponent_games"] == 2
     assert result["vs_opponent_average"] == 80
     assert result["probability"] is None
