@@ -1113,7 +1113,7 @@ MONITOR
   min="0"
   max="10"
   value="6"
-  oninput="syncAlloc()"
+  oninput="syncAlloc('a1')"
 />
 <b id="a1v">$6</b>
 </div>
@@ -1126,7 +1126,7 @@ MONITOR
   min="0"
   max="10"
   value="3"
-  oninput="syncAlloc()"
+  oninput="syncAlloc('a2')"
 />
 <b id="a2v">$3</b>
 </div>
@@ -1139,7 +1139,7 @@ MONITOR
   min="0"
   max="10"
   value="1"
-  oninput="syncAlloc()"
+  oninput="syncAlloc('a3')"
 />
 <b id="a3v">$1</b>
 </div>
@@ -1148,7 +1148,7 @@ MONITOR
   class="btn"
   onclick="equalize()"
 >
-  Set 10 / 10 / 10
+  Split risk equally
 </button>
 
 </div>
@@ -1403,6 +1403,7 @@ function eventDate(event){
 }
 
 
+function localDateKey(value){const d=new Date(value);return Number.isNaN(d.getTime())?"":[d.getFullYear(),String(d.getMonth()+1).padStart(2,"0"),String(d.getDate()).padStart(2,"0")].join("-");}
 function selectedBook(){
 
   return document.getElementById(
@@ -1450,13 +1451,9 @@ async function loadEvents(){
       events.filter(
         event =>
           event.commence_time &&
-          event.commence_time
-            .slice(0,10) ===
-          chosenDate
+          localDateKey(event.commence_time) === chosenDate
       );
 
-    if(!matching.length)
-      matching = events;
 
     select.innerHTML = "";
 
@@ -1468,6 +1465,8 @@ async function loadEvents(){
       selectedEventId = null;
 
       clearAll();
+      updateGameHeader(null);
+      setConnection("NO GAMES","yellow");
 
       return;
 
@@ -1525,6 +1524,7 @@ async function loadEvents(){
       "API ERROR",
       "red"
     );
+    throw error;
 
   }
   finally{
@@ -1552,7 +1552,7 @@ async function loadOdds(eventId){
     );
 
     processStandardOdds(
-      oddsCache[eventId].data
+      (oddsCache[eventId].data || []).find(item => item.id === eventId)
     );
 
     return;
@@ -2007,14 +2007,16 @@ async function loadResearch(force=false){
 
     const params =
       new URLSearchParams({
-
-        home_team:
-          event.home_team,
-
-        away_team:
-          event.away_team
-
+        home_team: event.home_team,
+        away_team: event.away_team
       });
+    // Only request location-specific weather for verified venue coordinates.
+    // Without coordinates the backend returns news but no stadium forecast.
+    const venue = event.venue;
+    if(venue && Number.isFinite(Number(venue.latitude)) && Number.isFinite(Number(venue.longitude))){
+      params.set("latitude", String(venue.latitude));
+      params.set("longitude", String(venue.longitude));
+    }
 
     const payload =
       await api(
@@ -2946,17 +2948,8 @@ function renderParlays(){
 
   const candidates =
     visibleBets()
-      .filter(
-        bet =>
-          [
-            "Player Prop",
-            "Spread",
-            "Moneyline",
-            "Total"
-          ].includes(
-            bet.type
-          )
-      )
+      .filter(bet => activeBetTypes().includes(bet.type))
+      .filter(bet => ["Player Prop","Spread","Moneyline","Total"].includes(bet.type))
       .slice(
         0,
         Number(
@@ -2998,24 +2991,15 @@ function renderParlays(){
 
   }
 
-  const sets = [
-
-    {
-      name:"2 LEG",
-      legs:candidates.slice(0,2)
-    },
-
-    {
-      name:"3 LEG",
-      legs:candidates.slice(0,3)
-    },
-
-    {
-      name:"4 LEG",
-      legs:candidates.slice(0,4)
-    }
-
-  ];
+  // Avoid opposite sides of the same market; these are illustrative, not quoted parlays.
+  const compatible=[];
+  const seen=new Set();
+  for(const bet of candidates){
+    const key=bet.marketKey+"|"+(bet.type==="Player Prop"?(bet.description||bet.name):"");
+    if(seen.has(key)) continue;
+    seen.add(key);compatible.push(bet);
+  }
+  const sets=[2,3,4].filter(n=>compatible.length>=n).map(n=>({name:n+" LEG",legs:compatible.slice(0,n)}));
 
   container.innerHTML =
     sets.map(
@@ -3089,7 +3073,7 @@ function renderParlays(){
               ).toFixed(1)}%
 
               <span class="sub">
-                combined market-implied probability
+                illustrative only; correlation and margin not removed
               </span>
 
             </div>
@@ -3099,7 +3083,7 @@ function renderParlays(){
               <div class="mini">
 
                 <small>
-                  FAIR ODDS
+                  INDEPENDENCE-ONLY (NOT A QUOTE)
                 </small>
 
                 <b>
@@ -3139,7 +3123,7 @@ function renderParlays(){
                 </small>
 
                 <b class="yellow">
-                  RESEARCH
+                  MODEL PENDING
                 </b>
 
               </div>
@@ -3308,12 +3292,12 @@ function renderFinal(){
 
           <li>
             Live events:
-            <b>CONNECTED</b>
+            <b>${currentEvent() ? "SELECTED" : "NOT VERIFIED"}</b>
           </li>
 
           <li>
             Live sportsbook odds:
-            <b>CONNECTED</b>
+            <b>${bets.length ? "DATA LOADED" : "NOT VERIFIED"}</b>
           </li>
 
           <li>
@@ -3600,76 +3584,31 @@ function clearAll(){
    ALLOCATION
 ========================================================= */
 
-function syncAlloc(){
-
-  const bankroll =
-    Number(
-      document.getElementById(
-        "bankroll"
-      ).value
-    ) || 0;
-
-  const risk =
-    Number(
-      document.getElementById(
-        "risk"
-      ).value
-    ) || 0;
-
-  const values = [
-    "a1",
-    "a2",
-    "a3"
-  ];
-
-  values.forEach(
-    id => {
-
-      const value =
-        Number(
-          document.getElementById(
-            id
-          ).value
-        ) || 0;
-
-      document.getElementById(
-        id+"v"
-      ).textContent =
-        "$"+value;
-
-    }
-  );
-
-  document.getElementById(
-    "bankDisplay"
-  ).textContent =
-    "$"+bankroll;
-
-  document.getElementById(
-    "riskDisplay"
-  ).textContent =
-    "$"+risk;
-
+function syncAlloc(changedId){
+  const ids=["a1","a2","a3"];
+  const bankroll=Math.max(0,Number(document.getElementById("bankroll").value)||0);
+  const risk=Math.max(0,Math.min(Number(document.getElementById("risk").value)||0,bankroll));
+  const cap=Math.round(risk*100);
+  let values=ids.map(id=>Math.max(0,Math.round((Number(document.getElementById(id).value)||0)*100)));
+  if(changedId && ids.includes(changedId)){
+    const selected=ids.indexOf(changedId);
+    values[selected]=Math.min(cap,values[selected]);
+    let overflow=Math.max(0,values.reduce((a,b)=>a+b,0)-cap);
+    for(let i=0;i<3;i++){if(i===selected)continue;const cut=Math.min(overflow,values[i]);values[i]-=cut;overflow-=cut;}
+  }else{
+    const total=values.reduce((a,b)=>a+b,0);
+    if(total>cap && total>0)values=values.map(v=>Math.floor(v*cap/total));
+  }
+  ids.forEach((id,i)=>{const el=document.getElementById(id);el.max=risk;el.step="0.01";el.value=(values[i]/100).toFixed(2);document.getElementById(id+"v").textContent="$"+(values[i]/100).toFixed(2);});
+  document.getElementById("bankDisplay").textContent="$"+bankroll.toFixed(2);
+  document.getElementById("riskDisplay").textContent="$"+risk.toFixed(2);
 }
-
-
 function equalize(){
-
-  ["a1","a2","a3"]
-    .forEach(
-      id => {
-
-        document.getElementById(
-          id
-        ).value = 10;
-
-      }
-    );
-
+  const risk=Math.max(0,Math.min(Number(document.getElementById("risk").value)||0,Number(document.getElementById("bankroll").value)||0));
+  const cents=Math.round(risk*100),base=Math.floor(cents/3);
+  ["a1","a2","a3"].forEach((id,i)=>{document.getElementById(id).value=((base+(i<cents%3?1:0))/100).toFixed(2);});
   syncAlloc();
-
 }
-
 
 /* =========================================================
    RENDER ALL
@@ -3858,9 +3797,7 @@ async function runAnalysis(){
   if(!date.value){
 
     date.value =
-      new Date()
-        .toISOString()
-        .slice(0,10);
+      localDateKey(new Date());
 
   }
 
@@ -3879,11 +3816,7 @@ async function runAnalysis(){
 
   runAnalysis()
     .then(
-      () =>
-        setConnection(
-          "LIVE",
-          "green"
-        )
+      () => { if(currentEvent()) setConnection("CONNECTED","green"); }
     )
     .catch(
       error => {
