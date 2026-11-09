@@ -410,10 +410,12 @@ async def nfl_player_stats(
     player: str = Query(..., min_length=2, max_length=120),
     market: str = Query(...),
     line: float = Query(..., ge=0, allow_inf_nan=False),
-    season: int = Query(2026, ge=1999, le=2026),
+    season: int = Query(2026, ge=1999, le=2100),
     player_id: str | None = Query(None, max_length=80),
 ):
     """Historical nflverse weekly stats; cached and free of sportsbook API calls."""
+    if season > datetime.now(timezone.utc).year:
+        raise HTTPException(status_code=422, detail="Season cannot be in the future.")
     if market not in MARKETS:
         raise HTTPException(status_code=422, detail="Unsupported NFL player market.")
     try:
