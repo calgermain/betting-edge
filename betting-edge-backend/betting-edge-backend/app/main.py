@@ -220,6 +220,7 @@ async def research_game(
     away_team: str = Query(...),
     latitude: float | None = Query(None),
     longitude: float | None = Query(None),
+    kickoff: str | None = Query(None),
 ):
     """
     Collect current research for a selected game.
@@ -241,6 +242,7 @@ async def research_game(
             away_team=away_team,
             latitude=latitude,
             longitude=longitude,
+            kickoff=kickoff,
         )
         data["venue"] = venue
         if venue and not venue["outdoor"] and latitude is None:
