@@ -11,6 +11,7 @@ from .calculations import implied_probability, american_odds, edge
 from .nfl_venues import nfl_home_venue
 from .player_trends import PlayerTrendRequest, analyze_player_trend
 from .player_csv import analyze_csv, PlayerCsvError
+from .nflverse_stats import weekly_rows, analyze_weekly, StatsUnavailable, MARKETS
 from pydantic import BaseModel, Field
 
 
@@ -402,3 +403,23 @@ async def nfl_player_trends_csv(request: NflPlayerCsvRequest):
     except PlayerCsvError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     return {"source": "caller-supplied-csv", "data": result}
+
+
+@app.get("/api/v1/nfl/player-stats")
+async def nfl_player_stats(
+    player: str = Query(..., min_length=2, max_length=120),
+    market: str = Query(...),
+    line: float = Query(..., ge=0, allow_inf_nan=False),
+    season: int = Query(2026, ge=1999, le=2026),
+    player_id: str | None = Query(None, max_length=80),
+):
+    """Historical nflverse weekly stats; cached and free of sportsbook API calls."""
+    if market not in MARKETS:
+        raise HTTPException(status_code=422, detail="Unsupported NFL player market.")
+    try:
+        rows = await weekly_rows(season)
+        return {"source": "nflverse", "data": analyze_weekly(
+            rows, player, market, line, season, player_id
+        )}
+    except StatsUnavailable as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
