@@ -106,13 +106,22 @@ def evaluate_population(rows: list[dict], market: str, season: int,
     if not evaluated_players:
         return {"status": "insufficient_sample", "season": season, "market": market,
                 "evaluated_players": 0, "evaluated_player_games": 0}
-    pooled_mae = {key: round(mean(values), 3) for key, values in all_errors.items()}
-    winner = min(pooled_mae, key=pooled_mae.get)
+    raw_mae = {key: mean(values) for key, values in all_errors.items()}
+    pooled_mae = {key: round(value, 3) for key, value in raw_mae.items()}
+    best_error = min(raw_mae.values())
+    # A numerical tie is not evidence that one model outperforms another.
+    tolerance = 1e-9
+    tied = [name for name, error in raw_mae.items() if abs(error - best_error) <= tolerance]
+    winner = tied[0] if len(tied) == 1 else None
+    improvement = raw_mae["season_mean"] - raw_mae["weighted"]
     return {
         "status": "evaluated", "season": season, "market": market,
         "evaluated_players": evaluated_players,
         "evaluated_player_games": len(all_errors["weighted"]),
         "pooled_mae": pooled_mae, "lowest_mae_model": winner,
+        "tied_lowest_mae_models": tied if len(tied) > 1 else [],
+        "weighted_mae_improvement_vs_season": round(improvement, 3),
+        "weighted_outperforms_season": improvement > tolerance,
         "method": "Chronological expanding-window one-game-ahead backtest, pooled by player-game.",
         "limitations": "Exploratory historical evaluation on one season. Player games are not independent, missing weeks are not imputed, and no odds or probability calibration is included.",
         "validated_probability": False,
