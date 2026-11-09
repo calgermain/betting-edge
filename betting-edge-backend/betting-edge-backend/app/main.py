@@ -257,7 +257,7 @@ async def research_game(
     except Exception as e:
         raise HTTPException(
             status_code=502,
-            detail=f"Research request failed: {e}",
+            detail="Research request failed.",
         )
 
 
@@ -306,6 +306,7 @@ async def research_news(
 async def research_weather(
     latitude: float,
     longitude: float,
+    kickoff: str | None = Query(None),
 ):
     """
     Current and forecast weather for a game location.
@@ -315,6 +316,7 @@ async def research_weather(
         data = await research.weather(
             latitude=latitude,
             longitude=longitude,
+            kickoff=kickoff,
         )
 
         return {
@@ -326,7 +328,7 @@ async def research_weather(
     except Exception as e:
         raise HTTPException(
             status_code=502,
-            detail=f"Weather request failed: {e}",
+            detail="Weather request failed.",
         )
 
 
