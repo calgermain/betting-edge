@@ -38,7 +38,12 @@ class StatsUnavailable(Exception):
 
 
 def _name(value: str) -> str:
-    return re.sub(r"[^a-z0-9]", "", (value or "").casefold())
+    """Normalize punctuation and common suffixes; never fuzzy-guess identities."""
+    value = (value or "").casefold().replace("’", "'")
+    tokens = re.findall(r"[a-z0-9]+", value)
+    if tokens and tokens[-1] in {"jr", "sr", "ii", "iii", "iv"}:
+        tokens.pop()
+    return "".join(tokens)
 
 
 async def weekly_rows(season: int) -> tuple[list[dict], dict]:
@@ -99,7 +104,8 @@ def analyze_weekly(rows: list[dict], player: str, market: str, line: float,
     ]
     ids = {row.get("player_id") for row in matching}
     if not matching:
-        return {"status": "not_found", "player": player, "season": season}
+        return {"status": "not_found", "player": player, "season": season,
+                "message": "No exact normalized player match. Verify spelling and season."}
     if len(ids) > 1:
         return {"status": "ambiguous_player", "player": player, "season": season,
                 "player_ids": sorted(str(x) for x in ids if x)}
