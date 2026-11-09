@@ -13,6 +13,7 @@ from .player_trends import PlayerTrendRequest, analyze_player_trend
 from .player_csv import analyze_csv, PlayerCsvError
 from .nflverse_stats import weekly_rows, analyze_weekly, StatsUnavailable, MARKETS
 from .nfl_projection import baseline
+from .nfl_backtest import evaluate
 from pydantic import BaseModel, Field
 
 
@@ -424,7 +425,8 @@ async def nfl_player_stats(
         rows, freshness = await weekly_rows(season)
         data = analyze_weekly(rows, player, market, line, season, player_id)
         projection = baseline(data["games"], line, opponent) if data["status"] == "ok" else None
+        backtest = evaluate(data["games"]) if data["status"] == "ok" else None
         return {"source": "nflverse", "freshness": freshness, "data": data,
-                "projection": projection}
+                "projection": projection, "backtest": backtest}
     except StatsUnavailable as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
