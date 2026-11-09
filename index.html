@@ -2522,6 +2522,7 @@ async function loadNflPlayerStats(){
     const freshness=response.freshness || {};
     status.textContent=freshness.stale ? "STALE DATA" : "HISTORICAL";
     const projection=response.projection || {};
+    const backtest=response.backtest || {};
     const summary=[
       ["Games",data.sample_size],
       ["Latest week",data.latest_week || "—"],
@@ -2546,10 +2547,20 @@ async function loadNflPlayerStats(){
         ].map(([label,value])=>'<div class="kv"><span class="muted">'+escapeHtml(label)+'</span><div class="weather-value">'+escapeHtml(value)+'</div></div>').join("")+
         '</div><div class="sub">'+escapeHtml(projection.warning)+'</div></div>'
       : '<div class="sub" style="margin-top:10px">Projection unavailable: fewer than 3 games.</div>';
+    const backtestHtml=backtest.status==="evaluated"
+      ? '<div class="card" style="margin-top:12px"><div class="eyebrow">WALK-FORWARD BACKTEST — LOWER MAE IS BETTER</div>'+
+        '<div class="weather-box">'+[
+          ["Evaluated games",backtest.evaluated_games],
+          ["Weighted MAE",backtest.mae.weighted],
+          ["Season avg MAE",backtest.mae.season_mean],
+          ["Last 5 MAE",backtest.mae.last_five_mean]
+        ].map(([label,value])=>'<div class="kv"><span class="muted">'+escapeHtml(label)+'</span><div class="weather-value">'+escapeHtml(value)+'</div></div>').join("")+
+        '</div><div class="sub">'+escapeHtml(backtest.limitations)+'</div></div>'
+      : '<div class="sub" style="margin-top:10px">Backtest requires at least 4 recorded games.</div>';
     results.innerHTML='<div class="sub" style="margin-bottom:10px">'+escapeHtml(sourceNote)+'</div>'+
       '<div class="weather-box">'+summaries+'</div>'+
       '<div style="overflow-x:auto;margin-top:12px"><table style="width:100%;text-align:left"><thead><tr><th>Game</th><th>Opponent</th><th>Stat</th></tr></thead><tbody>'+rows+'</tbody></table></div>'+
-      '<div class="sub" style="margin-top:10px">Historical results only — not a projected probability or verified betting edge.</div>'+projectionHtml;
+      '<div class="sub" style="margin-top:10px">Historical results only — not a projected probability or verified betting edge.</div>'+projectionHtml+backtestHtml;
   }catch(error){
     status.textContent="UNAVAILABLE";
     results.textContent="Player statistics could not be loaded. This may be a source or backend issue.";
