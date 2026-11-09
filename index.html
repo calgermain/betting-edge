@@ -906,6 +906,13 @@ table{
     <div id="playerStatsResults" class="research-empty" style="margin-top:16px">
       Enter a player and line to review historical performance.
     </div>
+    <div class="card" style="margin-top:18px">
+      <div class="eyebrow">NFL / Season-wide model comparison</div>
+      <h3>Which projection model works better?</h3>
+      <div class="sub" style="margin-bottom:10px">Compare historical prediction errors across players in one season. Lower MAE is better; this does not establish betting profitability.</div>
+      <button class="btn" id="populationBacktestButton" onclick="loadPopulationBacktest()">Compare Models</button>
+      <div id="populationBacktestResults" class="sub" style="margin-top:12px">Uses the selected stat and season above.</div>
+    </div>
     <div class="sub" style="margin-top:12px">
       Data attribution: <a href="https://github.com/nflverse/nflverse-data" target="_blank" rel="noopener noreferrer">nflverse</a>.
       Player identity and line must be checked against your sportsbook.
@@ -2490,6 +2497,42 @@ function weatherDescription(code){
 
 
 // Historical NFL player research is deliberately separate from parlay odds.
+async function loadPopulationBacktest(){
+  const button=document.getElementById("populationBacktestButton");
+  const results=document.getElementById("populationBacktestResults");
+  const market=document.getElementById("playerStatsMarket").value;
+  const season=Number(document.getElementById("playerStatsSeason").value);
+  if(!Number.isInteger(season) || season<1999 || season>new Date().getFullYear()){
+    results.textContent="Choose a valid season.";
+    return;
+  }
+  button.disabled=true;
+  results.textContent="Evaluating historical player-games...";
+  try{
+    const response=await api("/api/v1/nfl/model-backtest?"+new URLSearchParams({market,season:String(season)}));
+    const data=response.data || {};
+    if(data.status!=="evaluated"){
+      results.textContent="Not enough player-game history to compare models for this season and stat.";
+      return;
+    }
+    const rows=[
+      ["Weighted (60/40)",data.pooled_mae.weighted],
+      ["Season average",data.pooled_mae.season_mean],
+      ["Last five average",data.pooled_mae.last_five_mean]
+    ];
+    results.innerHTML='<div class="sub">Evaluated '+escapeHtml(data.evaluated_players)+' players and '+escapeHtml(data.evaluated_player_games)+' player-games.'+
+      (response.freshness?.stale ? ' Warning: cached source data is stale.' : '')+'</div>'+
+      '<div style="overflow-x:auto;margin-top:10px"><table style="width:100%;text-align:left"><thead><tr><th>Model</th><th>MAE (lower is better)</th></tr></thead><tbody>'+
+      rows.map(([name,mae])=>'<tr><td>'+escapeHtml(name)+'</td><td>'+escapeHtml(mae)+'</td></tr>').join("")+
+      '</tbody></table></div><div class="sub" style="margin-top:10px">'+escapeHtml(data.limitations)+'</div>';
+  }catch(error){
+    results.textContent="Model comparison unavailable. Check backend availability and the selected season.";
+    console.error("NFL model backtest error:",error);
+  }finally{
+    button.disabled=false;
+  }
+}
+
 async function loadNflPlayerStats(){
   const status=document.getElementById("playerStatsStatus");
   const results=document.getElementById("playerStatsResults");
