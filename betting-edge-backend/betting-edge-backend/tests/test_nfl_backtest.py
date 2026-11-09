@@ -26,3 +26,27 @@ def test_insufficient_sample_does_not_report_mae():
 def test_constant_series_has_zero_error():
     result = evaluate([{"value": 50}] * 8)
     assert all(error == 0 for error in result["mae"].values())
+
+
+def test_population_backtest_groups_players_and_excludes_future_and_postseason():
+    from app.nfl_backtest import evaluate_population
+
+    rows = []
+    for player in ("a", "b"):
+        for week in range(1, 7):
+            rows.append({"player_id": player, "season": "2026",
+                         "season_type": "REG", "week": str(week),
+                         "receiving_yards": "50"})
+    rows.append({"player_id": "a", "season": "2026", "season_type": "POST",
+                 "week": "7", "receiving_yards": "1000"})
+    result = evaluate_population(rows, "receiving_yards", 2026)
+    assert result["evaluated_players"] == 2
+    assert result["evaluated_player_games"] == 6
+    assert result["pooled_mae"]["weighted"] == 0
+    assert result["validated_probability"] is False
+
+
+def test_population_backtest_rejects_sparse_data():
+    from app.nfl_backtest import evaluate_population
+
+    assert evaluate_population([], "receptions", 2026)["status"] == "insufficient_sample"
