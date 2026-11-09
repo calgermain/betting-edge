@@ -2007,14 +2007,16 @@ async function loadResearch(force=false){
 
     const params =
       new URLSearchParams({
-
-        home_team:
-          event.home_team,
-
-        away_team:
-          event.away_team
-
+        home_team: event.home_team,
+        away_team: event.away_team
       });
+    // Only request location-specific weather for verified venue coordinates.
+    // Without coordinates the backend returns news but no stadium forecast.
+    const venue = event.venue;
+    if(venue && Number.isFinite(Number(venue.latitude)) && Number.isFinite(Number(venue.longitude))){
+      params.set("latitude", String(venue.latitude));
+      params.set("longitude", String(venue.longitude));
+    }
 
     const payload =
       await api(
