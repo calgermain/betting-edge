@@ -2521,6 +2521,7 @@ async function loadNflPlayerStats(){
     }
     const freshness=response.freshness || {};
     status.textContent=freshness.stale ? "STALE DATA" : "HISTORICAL";
+    const projection=response.projection || {};
     const summary=[
       ["Games",data.sample_size],
       ["Latest week",data.latest_week || "—"],
@@ -2535,10 +2536,20 @@ async function loadNflPlayerStats(){
       ? 'Dataset fetched '+new Date(freshness.fetched_at).toLocaleString()+
         (freshness.stale ? ' — STALE FALLBACK: upstream source unavailable.' : '.')
       : 'Dataset retrieval time unavailable.';
+    const projectionHtml=projection.status==="exploratory"
+      ? '<div class="card" style="margin-top:12px"><div class="eyebrow">EXPERIMENTAL PROJECTION — NOT A BETTING EDGE</div>'+
+        '<div class="weather-box">'+[
+          ["Weighted baseline",projection.projected_stat],
+          ["Difference vs line",projection.difference_from_line],
+          ["Recent vs season",projection.recent_vs_season],
+          ["Historical std. dev.",projection.historical_std_dev]
+        ].map(([label,value])=>'<div class="kv"><span class="muted">'+escapeHtml(label)+'</span><div class="weather-value">'+escapeHtml(value)+'</div></div>').join("")+
+        '</div><div class="sub">'+escapeHtml(projection.warning)+'</div></div>'
+      : '<div class="sub" style="margin-top:10px">Projection unavailable: fewer than 3 games.</div>';
     results.innerHTML='<div class="sub" style="margin-bottom:10px">'+escapeHtml(sourceNote)+'</div>'+
       '<div class="weather-box">'+summaries+'</div>'+
       '<div style="overflow-x:auto;margin-top:12px"><table style="width:100%;text-align:left"><thead><tr><th>Game</th><th>Opponent</th><th>Stat</th></tr></thead><tbody>'+rows+'</tbody></table></div>'+
-      '<div class="sub" style="margin-top:10px">Historical results only — not a projected probability or verified betting edge.</div>';
+      '<div class="sub" style="margin-top:10px">Historical results only — not a projected probability or verified betting edge.</div>'+projectionHtml;
   }catch(error){
     status.textContent="UNAVAILABLE";
     results.textContent="Player statistics could not be loaded. This may be a source or backend issue.";
