@@ -50,3 +50,13 @@ def test_population_backtest_rejects_sparse_data():
     from app.nfl_backtest import evaluate_population
 
     assert evaluate_population([], "receptions", 2026)["status"] == "insufficient_sample"
+
+
+def test_tied_models_are_not_declared_winners():
+    from app.nfl_backtest import evaluate_population
+    rows = [{"player_id": "same", "season": "2026", "season_type": "REG",
+             "week": str(w), "receiving_yards": "50"} for w in range(1, 9)]
+    result = evaluate_population(rows, "receiving_yards", 2026)
+    assert result["lowest_mae_model"] is None
+    assert len(result["tied_lowest_mae_models"]) == 3
+    assert result["weighted_outperforms_season"] is False
