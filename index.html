@@ -3302,6 +3302,8 @@ async function researchParlays(){
         picked.push(entry);players.add(player);
       }
       if(!picked.length) return "";
+      // Cap displayed candidates for readability, not as a risk classification.
+      // Users can inspect every qualifying leg in the selected evidence tier.
       const averageScore=picked.reduce((sum,x)=>sum+x.research.score,0)/picked.length;
       return '<div class="card parlay"><div class="eyebrow">'+escapeHtml(profile.name)+
         ' / '+picked.length+' qualifying legs</div>'+
