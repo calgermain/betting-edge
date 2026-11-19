@@ -3258,7 +3258,19 @@ async function researchParlays(){
     const key=[b.description.toLowerCase(),b.marketKey,b.rawName,b.point].join("|");
     if(!unique.has(key)) unique.set(key,b);
   }
-  const candidates=[...unique.values()].slice(0,40);
+  // Round-robin by stat market so sportsbook ordering cannot monopolize the
+  // limited research batch (40 requests max, no additional Odds API calls).
+  const byMarket=new Map();
+  for(const bet of unique.values()){
+    if(!byMarket.has(bet.marketKey)) byMarket.set(bet.marketKey,[]);
+    byMarket.get(bet.marketKey).push(bet);
+  }
+  const candidates=[];
+  while(candidates.length<40 && [...byMarket.values()].some(group=>group.length)){
+    for(const group of byMarket.values()){
+      if(group.length && candidates.length<40) candidates.push(group.shift());
+    }
+  }
   if(!candidates.length){
     output.textContent="No supported player props loaded. Load player prop markets to generate research-ranked suggestions.";
     return;
