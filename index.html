@@ -1055,7 +1055,7 @@ table{
 
 <div class="card" style="margin-bottom:14px">
   <div class="eyebrow">Research-ranked suggestions</div>
-  <p class="sub">Build 2-, 3-, and 4-leg candidate combinations using historical NFL player evidence. These are not calibrated probabilities or sportsbook quotes. Same-player combinations are excluded; other correlations remain unmodeled.</p>
+  <p class="sub">Group qualifying player props by historical evidence strength, without fixed leg counts. These are not calibrated probabilities or sportsbook quotes. Same-player combinations are excluded; other correlations remain unmodeled.</p>
   <button class="btn" id="researchParlayButton" onclick="researchParlays()">Build research-ranked parlays</button>
   <div id="researchParlayResults" style="margin-top:12px" aria-live="polite">Load a game's player prop markets, then click to analyze.</div>
 </div>
@@ -1973,7 +1973,9 @@ function processProps(event){
                       ].join("|"),
 
                       name:
-                        label,
+                        (outcome.description && propMarketLabel(market.key))
+                          ? outcome.description+" — "+outcome.name+" "+outcome.point+" "+propMarketLabel(market.key)
+                          : label,
 
                       rawName:
                         outcome.name,
@@ -2932,6 +2934,25 @@ function renderBets(){
 }
 
 
+function propMarketLabel(key){
+  return ({
+    player_pass_yds:"Passing Yards",
+    player_rush_yds:"Rushing Yards",
+    player_reception_yds:"Receiving Yards",
+    player_receptions:"Receptions",
+    player_pass_tds:"Passing Touchdowns",
+    player_rush_tds:"Rushing Touchdowns",
+    player_reception_tds:"Receiving Touchdowns"
+  })[key] || null;
+}
+
+function propLegLabel(bet){
+  const market=propMarketLabel(bet.marketKey);
+  if(!market) return bet.name;
+  return (bet.description || "Unknown player")+" — "+bet.rawName+" "+
+    bet.point+" "+market;
+}
+
 function propResearchMarket(marketKey){
   const map={
     player_pass_yds:"passing_yards",
@@ -3264,31 +3285,40 @@ async function researchParlays(){
       output.textContent="Insufficient positive directional evidence for two independent-player legs. No suggested parlay generated; try another game or market.";
       return;
     }
-    const profiles=[["Conservative",2],["Balanced",3],["Aggressive",4]];
-    const cards=profiles.map(([label,count])=>{
-      const picked=[],players=new Set(),markets=new Set();
+    // Qualification is based on observed evidence, not a forced number of legs.
+    // Conservative uses the strongest evidence; broader tiers may include weaker
+    // positive signals, but are not labeled as low-risk probabilities.
+    const profiles=[
+      {name:"Strongest evidence",threshold:15},
+      {name:"Moderate evidence",threshold:8},
+      {name:"Exploratory evidence",threshold:0}
+    ];
+    const cards=profiles.map(profile=>{
+      const picked=[],players=new Set();
       for(const entry of ranked){
+        if(entry.research.score<profile.threshold) continue;
         const player=entry.bet.description.toLowerCase();
-        const key=player+"|"+entry.bet.marketKey;
-        if(players.has(player)||markets.has(key)) continue;
-        picked.push(entry);players.add(player);markets.add(key);
-        if(picked.length===count) break;
+        if(players.has(player)) continue;
+        picked.push(entry);players.add(player);
       }
-      if(picked.length<count) return "";
-      return '<div class="card parlay"><div class="eyebrow">'+label+' / '+count+' legs</div>'+
+      if(!picked.length) return "";
+      const averageScore=picked.reduce((sum,x)=>sum+x.research.score,0)/picked.length;
+      return '<div class="card parlay"><div class="eyebrow">'+escapeHtml(profile.name)+
+        ' / '+picked.length+' qualifying legs</div>'+
         '<h3>RESEARCH-RANKED CANDIDATES</h3><div class="legs">'+picked.map(x=>
-          '<div class="leg"><span>'+escapeHtml(x.bet.description)+' — '+escapeHtml(x.bet.rawName)+' '+
-          escapeHtml(x.bet.point)+' ('+escapeHtml(x.bet.book)+', '+fmtOdds(x.bet.odds)+')'+
+          '<div class="leg"><span>'+escapeHtml(propLegLabel(x.bet))+
+          ' ('+escapeHtml(x.bet.book)+', '+fmtOdds(x.bet.odds)+')'+
           '<div class="sub">Projection: '+escapeHtml(x.research.projected_stat)+
           ' · Historical hit rate: '+Math.round(x.research.historical_hit_rate*100)+
           '% · Walk-forward MAE: '+escapeHtml(x.research.walk_forward_mae)+
           ' · Evidence score: '+escapeHtml(x.research.score)+'</div></span></div>'
-        ).join("")+'</div><div class="sub">Research ranking only. No joint win probability, fair odds, or validated betting edge. Verify sportsbook availability, injuries and correlations.</div></div>';
+        ).join("")+'</div><div class="sub">Average evidence score: '+averageScore.toFixed(1)+
+        '. This is a list of qualifying candidates, NOT an assurance that the combined ticket is low-risk. No joint win probability or validated edge; review correlation, injuries, and current lines.</div></div>';
     }).filter(Boolean);
     output.innerHTML=cards.length?cards.join("")+
-      '<div class="sub">Based on '+ranked.length+' positive-evidence candidates from '+candidates.length+
-      ' researched quotes. Historical statistics can be stale and do not account for all lineup changes.</div>'
-      :"Not enough distinct players and markets for research-ranked parlays.";
+      '<div class="sub">Ranked '+ranked.length+' positive-evidence candidates from '+candidates.length+
+      ' researched quotes. The same strongest legs can appear in multiple evidence tiers. A longer ticket is usually harder to win, even when each leg qualifies.</div>'
+      :"No candidates met the evidence thresholds. No parlay suggested.";
   }catch(error){
     output.textContent="Unable to complete parlay research: "+error.message;
   }finally{
