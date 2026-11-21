@@ -1301,7 +1301,6 @@ let selectedEventId = null;
 
 let oddsCache = {};
 let standardOddsRequests = {};
-let gameLoadVersion = 0;
 let propsCache = {};
 let researchCache = {};
 
@@ -1665,7 +1664,7 @@ async function loadOdds(eventId){
       error
     );
 
-    clearMarkets();
+    if(currentEvent()?.id===eventId) clearMarkets();
 
   }
   finally{
@@ -4104,11 +4103,8 @@ document.getElementById(
 
     renderAll();
 
-    await loadOdds(
-      selectedEventId
-    );
-
-    await loadResearch();
+    void loadOdds(selectedEventId);
+    void loadResearch();
 
   }
 );
