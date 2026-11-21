@@ -1300,6 +1300,7 @@ let events = [];
 let selectedEventId = null;
 
 let oddsCache = {};
+let standardOddsRequests = {};
 let propsCache = {};
 let researchCache = {};
 
@@ -1568,11 +1569,9 @@ async function loadEvents(){
       matching[0]
     );
 
-    await loadOdds(
-      selectedEventId
-    );
-
-    await loadResearch();
+    // Do not block the game selector on the slower odds/news services.
+    void loadOdds(selectedEventId);
+    void loadResearch();
 
   }
   catch(error){
@@ -1610,43 +1609,35 @@ async function loadOdds(eventId){
   if(!eventId)
     return;
 
-  if(oddsCache[eventId]){
-
-    updateQuota(
-      oddsCache[eventId].quota
-    );
-
-    processStandardOdds(
-      (oddsCache[eventId].data || []).find(item => item.id === eventId)
-    );
-
+  const sport=currentSport();
+  const cacheKey=sport+"|h2h,spreads,totals|us";
+  if(oddsCache[cacheKey]){
+    updateQuota(oddsCache[cacheKey].quota);
+    if(currentEvent()?.id===eventId){
+      processStandardOdds((oddsCache[cacheKey].data||[]).find(item=>item.id===eventId));
+    }
     return;
-
+  }
+  if(standardOddsRequests[cacheKey]){
+    await standardOddsRequests[cacheKey];
+    if(oddsCache[cacheKey] && currentEvent()?.id===eventId){
+      updateQuota(oddsCache[cacheKey].quota);
+      processStandardOdds((oddsCache[cacheKey].data||[]).find(item=>item.id===eventId));
+    }
+    return;
   }
 
   setLoading(true);
 
   try{
 
-    const sport =
-      currentSport();
-
-    /*
-      Standard odds are fetched once per event
-      and cached locally.
-    */
-
-    const payload =
-      await api(
-        `/api/v1/odds` +
-        `?sport=${encodeURIComponent(sport)}` +
-        `&markets=h2h,spreads,totals` +
-        `&regions=us`
-      );
-
-    oddsCache[eventId] =
-      payload;
-
+    // One sport-wide odds response serves every game; share concurrent requests.
+    standardOddsRequests[cacheKey]=api(
+      '/api/v1/odds?sport='+encodeURIComponent(sport)+
+      '&markets=h2h,spreads,totals&regions=us'
+    );
+    const payload=await standardOddsRequests[cacheKey];
+    oddsCache[cacheKey]=payload;
     updateQuota(
       payload.quota
     );
@@ -1663,9 +1654,7 @@ async function loadOdds(eventId){
             item.id === eventId
         );
 
-    processStandardOdds(
-      selected
-    );
+    if(currentEvent()?.id===eventId) processStandardOdds(selected);
 
   }
   catch(error){
@@ -1675,13 +1664,12 @@ async function loadOdds(eventId){
       error
     );
 
-    clearMarkets();
+    if(currentEvent()?.id===eventId) clearMarkets();
 
   }
   finally{
-
+    delete standardOddsRequests[cacheKey];
     setLoading(false);
-
   }
 
 }
@@ -4061,6 +4049,7 @@ document.getElementById(
     selectedEventId = null;
 
     oddsCache = {};
+    standardOddsRequests = {};
 
     propsCache = {};
 
@@ -4114,11 +4103,8 @@ document.getElementById(
 
     renderAll();
 
-    await loadOdds(
-      selectedEventId
-    );
-
-    await loadResearch();
+    void loadOdds(selectedEventId);
+    void loadResearch();
 
   }
 );
