@@ -17,6 +17,7 @@ from .nfl_backtest import evaluate, evaluate_population
 from .nfl_matchups import defensive_context
 from .parlay_research import ResearchRequest, research_candidates
 from .nba_stats import season_rows as nba_season_rows, player_research as nba_player_research, NBAStatsUnavailable, MARKETS as NBA_MARKETS
+from .nba_parlay_research import NBAResearchRequest, rank_nba_candidates
 from pydantic import BaseModel, Field
 
 
@@ -492,5 +493,15 @@ async def nba_player_stats(
         rows, metadata = await nba_season_rows(season)
         return {"source": "hoopR NBA Stats player game logs", "metadata": metadata,
                 "data": nba_player_research(rows, player, season, market, line, player_id, projected_minutes)}
+    except NBAStatsUnavailable as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+
+@app.post("/api/v1/nba/parlay-research")
+async def nba_parlay_research(request: NBAResearchRequest):
+    try:
+        rows, metadata = await nba_season_rows(request.season)
+        return {"source": "hoopR NBA Stats player game logs", "metadata": metadata,
+                **rank_nba_candidates(rows, request)}
     except NBAStatsUnavailable as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
