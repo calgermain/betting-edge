@@ -878,6 +878,7 @@ table{
       </select></label>
       <label style="flex:1;min-width:90px">Season ends <input id="nbaPlayerSeason" type="number" min="2003" max="2100" style="width:100%"></label>
       <label style="flex:1;min-width:100px">Prop line <input id="nbaPlayerLine" type="number" step="0.5" min="0" placeholder="Optional" style="width:100%"></label>
+      <label style="flex:1;min-width:115px">Scenario minutes <input id="nbaScenarioMinutes" type="number" step="0.5" min="0.5" max="48" placeholder="Auto" style="width:100%"></label>
       <button class="btn primary" onclick="loadNBAPlayerStats()">Research player</button>
     </div>
     <div id="nbaPlayerResult" style="margin-top:14px" aria-live="polite">Select NBA, then enter a player name to research.</div>
@@ -4271,6 +4272,7 @@ async function loadNBAPlayerStats(){
   const market=document.getElementById("nbaPlayerMarket").value;
   const season=Number(document.getElementById("nbaPlayerSeason").value);
   const lineText=document.getElementById("nbaPlayerLine").value.trim();
+  const minutesText=document.getElementById("nbaScenarioMinutes").value.trim();
   const output=document.getElementById("nbaPlayerResult");
   const status=document.getElementById("nbaStatsStatus");
   if(name.length<2 || !Number.isInteger(season) || season<2003 || season>2100){
@@ -4281,6 +4283,11 @@ async function loadNBAPlayerStats(){
     const line=Number(lineText);
     if(!Number.isFinite(line)||line<0){output.textContent="Enter a valid prop line.";return;}
     params.set("line",String(line));
+  }
+  if(minutesText!==""){
+    const minutes=Number(minutesText);
+    if(!Number.isFinite(minutes)||minutes<=0||minutes>48){output.textContent="Scenario minutes must be above 0 and at most 48.";return;}
+    params.set("projected_minutes",String(minutes));
   }
   status.textContent="LOADING";
   output.textContent="Loading historical NBA game logs...";
@@ -4295,7 +4302,12 @@ async function loadNBAPlayerStats(){
       item("Last 5 avg",d.last_5_average)+item("Baseline projection",d.projected_stat)+
       item("Walk-forward MAE",d.walk_forward_mae)+item("Avg minutes",d.average_minutes)+
       (d.line!==undefined?item("Historical over rate",(d.historical_over_rate*100).toFixed(1)+"%"):"")+
-      "</div><p class='sub'>"+escapeHtml(d.methodology)+"</p>";
+      "</div>"+(d.minutes_model?("<h4>Minutes-aware exploratory model</h4><div style='display:flex;gap:22px;flex-wrap:wrap;margin:12px 0'>"+
+      item("Projected minutes",d.minutes_model.projected_minutes)+item("Stat per minute",d.minutes_model.stat_per_minute)+
+      item("Minutes-adjusted stat",d.minutes_model.projected_stat)+item("Minutes-model MAE",d.minutes_model.walk_forward_mae)+
+      item("Baseline comparison MAE",d.minutes_model.baseline_walk_forward_mae)+
+      "</div><p class='sub'>"+escapeHtml(d.minutes_model.methodology)+"</p>"):"<p class='sub'>Minutes model requires at least five games with recorded minutes.</p>")+
+      "<p class='sub'>"+escapeHtml(d.methodology)+"</p>";
     status.textContent="HISTORICAL DATA";
   }catch(error){
     status.textContent="UNAVAILABLE";
