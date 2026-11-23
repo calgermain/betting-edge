@@ -3275,8 +3275,9 @@ async function researchParlays(){
   const button=document.getElementById("researchParlayButton");
   const output=document.getElementById("researchParlayResults");
   const event=currentEvent();
+  if(currentSport()==="basketball_nba") return researchNBAParlays();
   if(!event || currentSport()!=="americanfootball_nfl"){
-    output.textContent="Select an NFL game and load player props first.";
+    output.textContent="Select an NFL or NBA game and load player props first.";
     return;
   }
   const year=new Date(event.commence_time).getUTCFullYear();
@@ -4263,9 +4264,10 @@ function syncBasketballSections(){
   document.getElementById("nflPlayerSection").style.display=nba?"none":"";
   document.getElementById("nbaPlayerSeason").value=String(nbaSeasonForEvent());
   const button=document.getElementById("researchParlayButton");
-  button.disabled=nba;
-  if(nba) document.getElementById("researchParlayResults").textContent=
-    "NBA research-ranked parlays are not yet implemented. Player research is available above.";
+  button.disabled=false;
+  document.getElementById("researchParlayResults").textContent=nba
+    ? "Load NBA player props, then click to research historical evidence."
+    : "Load NFL player props, then click to research historical evidence.";
 }
 async function loadNBAPlayerStats(){
   const name=document.getElementById("nbaPlayerName").value.trim();
@@ -4313,6 +4315,81 @@ async function loadNBAPlayerStats(){
     status.textContent="UNAVAILABLE";
     output.textContent="NBA data could not be loaded. "+error.message;
   }
+}
+
+
+async function researchNBAParlays(){
+  const button=document.getElementById("researchParlayButton");
+  const output=document.getElementById("researchParlayResults");
+  const event=currentEvent();
+  if(!event){output.textContent="Select an NBA game first.";return;}
+  const season=nbaSeasonForEvent();
+  const unique=new Map();
+  for(const bet of visibleBets()){
+    const market=nbaMarketForProp(bet.marketKey);
+    if(bet.type!=="Player Prop"||!market||!bet.description||
+       !["Over","Under"].includes(bet.rawName)||!Number.isFinite(Number(bet.point))) continue;
+    const key=[bet.description.toLowerCase(),market,bet.rawName,bet.point].join("|");
+    if(!unique.has(key)) unique.set(key,bet);
+  }
+  // Limit research to 40 quotes; avoid repeated API calls to Odds API.
+  const candidates=[...unique.values()].slice(0,40);
+  if(!candidates.length){
+    output.textContent="No NBA player props loaded. Click Load Player Props in the markets table first.";
+    return;
+  }
+  button.disabled=true;
+  output.textContent="Researching "+candidates.length+" NBA player prop quotes using historical game logs...";
+  try{
+    const response=await fetch(API_BASE+"/api/v1/nba/parlay-research",{
+      method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({season,candidates:candidates.map(b=>({
+        id:b.id,player:b.description,market:nbaMarketForProp(b.marketKey),
+        line:Number(b.point),side:b.rawName
+      }))})
+    });
+    if(!response.ok) throw new Error("NBA research API returned "+response.status);
+    const data=await response.json();
+    const evidence=new Map((data.results||[]).map(r=>[r.id,r]));
+    const ranked=candidates.map(b=>({bet:b,research:evidence.get(b.id)}))
+      .filter(x=>x.research?.status==="researched" && x.research.score>0)
+      .sort((a,b)=>b.research.score-a.research.score);
+    if(!ranked.length){
+      output.textContent="No NBA candidates qualified on historical directional evidence. No parlay suggested.";
+      return;
+    }
+    const profiles=[
+      {name:"Strongest historical signals",threshold:15},
+      {name:"Moderate historical signals",threshold:8},
+      {name:"Exploratory historical signals",threshold:0}
+    ];
+    const cards=profiles.map(profile=>{
+      const selected=[],players=new Set();
+      for(const entry of ranked){
+        if(entry.research.score<profile.threshold) continue;
+        const key=entry.bet.description.toLowerCase();
+        if(players.has(key)) continue;
+        selected.push(entry);players.add(key);
+      }
+      if(selected.length<2) return "";
+      return '<div class="card parlay"><div class="eyebrow">'+escapeHtml(profile.name)+
+        ' · '+selected.length+' different players</div><h3>NBA HISTORICAL RESEARCH</h3><div class="legs">'+
+        selected.map(x=>'<div class="leg"><span>'+escapeHtml(propLegLabel(x.bet))+
+          ' ('+escapeHtml(x.bet.book)+', '+fmtOdds(x.bet.odds)+')'+
+          '<div class="sub">Projection: '+escapeHtml(x.research.projected_stat)+
+          ' · Historical hit: '+(x.research.historical_hit_rate*100).toFixed(0)+
+          '% · Walk-forward MAE: '+escapeHtml(x.research.walk_forward_mae)+
+          ' · Model: '+escapeHtml(x.research.model)+
+          ' · Directional score: '+escapeHtml(x.research.score)+
+          '</div></span></div>').join("")+
+        '</div><p class="sub">Unvalidated historical evidence, not an estimated joint probability or a sportsbook parlay quote. Injuries, starting lineups, opponent defense and correlation are NOT modeled. Verify player availability before betting.</p></div>';
+    }).filter(Boolean);
+    output.innerHTML=cards.length?cards.join("")+
+      '<p class="sub">Candidates may repeat across evidence tiers. No NBA injury/lineup adjustments or calibrated edge are available.</p>'
+      :'<p class="sub">Positive individual signals found, but fewer than two distinct players qualify for a suggested parlay.</p>';
+  }catch(error){
+    output.textContent="Unable to complete NBA parlay research: "+error.message;
+  }finally{button.disabled=false;}
 }
 
 </script>
