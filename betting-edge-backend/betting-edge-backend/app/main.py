@@ -484,12 +484,13 @@ async def nba_player_stats(
     market: str = "points",
     line: float | None = Query(default=None, ge=0),
     player_id: int | None = None,
+    projected_minutes: float | None = Query(default=None, gt=0, le=48),
 ):
     if market not in NBA_MARKETS:
         raise HTTPException(status_code=422, detail="Unsupported NBA market")
     try:
         rows, metadata = await nba_season_rows(season)
         return {"source": "hoopR NBA Stats player game logs", "metadata": metadata,
-                "data": nba_player_research(rows, player, season, market, line, player_id)}
+                "data": nba_player_research(rows, player, season, market, line, player_id, projected_minutes)}
     except NBAStatsUnavailable as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
