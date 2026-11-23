@@ -864,6 +864,26 @@ table{
 </div>
 
 
+<!-- NBA HISTORICAL PLAYER RESEARCH -->
+<div class="section" id="nbaPlayerSection" style="display:none">
+  <div class="section-head"><div><div class="eyebrow">NBA / Historical player research</div><h2>Basketball Player Performance</h2></div><span class="pill y" id="nbaStatsStatus">NOT LOADED</span></div>
+  <div class="card">
+    <p class="sub">hoopR game logs; no Odds API credits. Historical baseline only: not injury-adjusted, lineup-adjusted, or a validated betting probability.</p>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:end">
+      <label style="flex:2;min-width:170px">Player <input id="nbaPlayerName" placeholder="e.g. Jayson Tatum" style="width:100%" maxlength="120"></label>
+      <label style="flex:1;min-width:130px">Stat <select id="nbaPlayerMarket" style="width:100%">
+        <option value="points">Points</option><option value="rebounds">Rebounds</option>
+        <option value="assists">Assists</option><option value="threes">Threes made</option>
+        <option value="pra">Points + rebounds + assists</option><option value="minutes">Minutes</option>
+      </select></label>
+      <label style="flex:1;min-width:90px">Season ends <input id="nbaPlayerSeason" type="number" min="2003" max="2100" style="width:100%"></label>
+      <label style="flex:1;min-width:100px">Prop line <input id="nbaPlayerLine" type="number" step="0.5" min="0" placeholder="Optional" style="width:100%"></label>
+      <button class="btn primary" onclick="loadNBAPlayerStats()">Research player</button>
+    </div>
+    <div id="nbaPlayerResult" style="margin-top:14px" aria-live="polite">Select NBA, then enter a player name to research.</div>
+  </div>
+</div>
+
 <!-- =====================================================
      NFL PLAYER STATS
 ===================================================== -->
@@ -1283,7 +1303,7 @@ const SPORT_MAP = {
 };
 
 
-const PROP_MARKETS = [
+const NFL_PROP_MARKETS = [
 
   "player_pass_yds",
   "player_pass_tds",
@@ -1296,6 +1316,11 @@ const PROP_MARKETS = [
 ];
 
 
+const NBA_PROP_MARKETS = [
+  "player_points","player_rebounds","player_assists","player_threes",
+  "player_points_rebounds_assists"
+];
+function propMarkets(){return currentSport()==="basketball_nba" ? NBA_PROP_MARKETS : NFL_PROP_MARKETS;}
 let events = [];
 let selectedEventId = null;
 
@@ -1567,6 +1592,7 @@ async function loadEvents(){
     updateGameHeader(
       matching[0]
     );
+    syncBasketballSections();
 
     await loadOdds(
       selectedEventId
@@ -1721,7 +1747,7 @@ async function loadProps(eventId){
       await api(
         `/api/v1/events/${encodeURIComponent(eventId)}/props` +
         `?sport=${encodeURIComponent(sport)}` +
-        `&markets=${encodeURIComponent(PROP_MARKETS.join(","))}` +
+        `&markets=${encodeURIComponent(propMarkets().join(","))}` +
         `&regions=us`
       );
 
@@ -1933,7 +1959,7 @@ function processProps(event){
             market => {
 
               if(
-                !PROP_MARKETS.includes(
+                !propMarkets().includes(
                   market.key
                 )
               ){
@@ -2942,7 +2968,9 @@ function propMarketLabel(key){
     player_receptions:"Receptions",
     player_pass_tds:"Passing Touchdowns",
     player_rush_tds:"Rushing Touchdowns",
-    player_reception_tds:"Receiving Touchdowns"
+    player_reception_tds:"Receiving Touchdowns",
+    player_points:"Points",player_rebounds:"Rebounds",player_assists:"Assists",
+    player_threes:"Three-Pointers Made",player_points_rebounds_assists:"Points + Rebounds + Assists"
   })[key] || null;
 }
 
@@ -2953,6 +2981,10 @@ function propLegLabel(bet){
     bet.point+" "+market;
 }
 
+function nbaMarketForProp(key){return ({
+  player_points:"points",player_rebounds:"rebounds",player_assists:"assists",
+  player_threes:"threes",player_points_rebounds_assists:"pra"
+})[key] || null;}
 function propResearchMarket(marketKey){
   const map={
     player_pass_yds:"passing_yards",
@@ -4031,6 +4063,7 @@ document.getElementById(
 
     currentResearch = null;
 
+    syncBasketballSections();
     await loadEvents();
 
   }
@@ -4187,6 +4220,8 @@ async function runAnalysis(){
 
   renderParlays();
 
+  syncBasketballSections();
+
   syncAlloc();
 
   setConnection(
@@ -4214,6 +4249,59 @@ async function runAnalysis(){
     );
 
 })();
+
+
+/* NBA historical player research, independent of sportsbook quota */
+function nbaSeasonForEvent(){
+  const d=currentEvent()?.commence_time ? new Date(currentEvent().commence_time) : new Date();
+  return d.getUTCFullYear()+(d.getUTCMonth()>=6?1:0);
+}
+function syncBasketballSections(){
+  const nba=currentSport()==="basketball_nba";
+  document.getElementById("nbaPlayerSection").style.display=nba?"":"none";
+  document.getElementById("nflPlayerSection").style.display=nba?"none":"";
+  document.getElementById("nbaPlayerSeason").value=String(nbaSeasonForEvent());
+  const button=document.getElementById("researchParlayButton");
+  button.disabled=nba;
+  if(nba) document.getElementById("researchParlayResults").textContent=
+    "NBA research-ranked parlays are not yet implemented. Player research is available above.";
+}
+async function loadNBAPlayerStats(){
+  const name=document.getElementById("nbaPlayerName").value.trim();
+  const market=document.getElementById("nbaPlayerMarket").value;
+  const season=Number(document.getElementById("nbaPlayerSeason").value);
+  const lineText=document.getElementById("nbaPlayerLine").value.trim();
+  const output=document.getElementById("nbaPlayerResult");
+  const status=document.getElementById("nbaStatsStatus");
+  if(name.length<2 || !Number.isInteger(season) || season<2003 || season>2100){
+    output.textContent="Enter a player name and a valid season end year.";return;
+  }
+  const params=new URLSearchParams({player:name,season:String(season),market});
+  if(lineText!==""){
+    const line=Number(lineText);
+    if(!Number.isFinite(line)||line<0){output.textContent="Enter a valid prop line.";return;}
+    params.set("line",String(line));
+  }
+  status.textContent="LOADING";
+  output.textContent="Loading historical NBA game logs...";
+  try{
+    const response=await api("/api/v1/nba/player-research?"+params.toString());
+    const d=response.data;
+    if(d.status!=="ok"){output.textContent="Player data unavailable: "+d.status+". Check the name and season.";status.textContent="NO DATA";return;}
+    const item=(label,value)=>"<div><span class='sub'>"+label+"</span><div style='font-size:20px;font-weight:700'>"+escapeHtml(value??"N/A")+"</div></div>";
+    output.innerHTML="<h3>"+escapeHtml(d.player)+"</h3>"+
+      "<div style='display:flex;gap:22px;flex-wrap:wrap;margin:12px 0'>"+
+      item("Games",d.sample_size)+item("Season avg",d.season_average)+
+      item("Last 5 avg",d.last_5_average)+item("Baseline projection",d.projected_stat)+
+      item("Walk-forward MAE",d.walk_forward_mae)+item("Avg minutes",d.average_minutes)+
+      (d.line!==undefined?item("Historical over rate",(d.historical_over_rate*100).toFixed(1)+"%"):"")+
+      "</div><p class='sub'>"+escapeHtml(d.methodology)+"</p>";
+    status.textContent="HISTORICAL DATA";
+  }catch(error){
+    status.textContent="UNAVAILABLE";
+    output.textContent="NBA data could not be loaded. "+error.message;
+  }
+}
 
 </script>
 
