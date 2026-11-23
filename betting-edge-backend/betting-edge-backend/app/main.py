@@ -16,6 +16,7 @@ from .nfl_projection import baseline
 from .nfl_backtest import evaluate, evaluate_population
 from .nfl_matchups import defensive_context
 from .parlay_research import ResearchRequest, research_candidates
+from .nba_stats import season_rows as nba_season_rows, player_research as nba_player_research, NBAStatsUnavailable, MARKETS as NBA_MARKETS
 from pydantic import BaseModel, Field
 
 
@@ -472,4 +473,23 @@ async def nfl_parlay_research(request: ResearchRequest):
         rows, freshness = await weekly_rows(request.season)
         return {"freshness": freshness, **research_candidates(rows, request)}
     except StatsUnavailable as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+
+# NBA historical research. Uses free hoopR releases, never sportsbook credits.
+@app.get("/api/v1/nba/player-research")
+async def nba_player_stats(
+    player: str = Query(min_length=2, max_length=120),
+    season: int = Query(ge=2003, le=2100),
+    market: str = "points",
+    line: float | None = Query(default=None, ge=0),
+    player_id: int | None = None,
+):
+    if market not in NBA_MARKETS:
+        raise HTTPException(status_code=422, detail="Unsupported NBA market")
+    try:
+        rows, metadata = await nba_season_rows(season)
+        return {"source": "hoopR NBA Stats player game logs", "metadata": metadata,
+                "data": nba_player_research(rows, player, season, market, line, player_id)}
+    except NBAStatsUnavailable as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
